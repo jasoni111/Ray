@@ -52,7 +52,9 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 
 		const auto& m = i.getMaterial();
 
-		auto R = V - 2 * V.dot(Normal) * Normal;
+		auto R =( V - 2 * V.dot(Normal) * Normal).normalize();
+		// auto phong = m.shade(scene,r,i,in)
+		
 		
 		
 
