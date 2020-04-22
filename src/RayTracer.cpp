@@ -50,7 +50,7 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 		vec3f I = m.shade(scene, r, i);
 
 		ray reflectedRay = reflectDirection(r, i);
-		I += prod(traceRay(scene, reflectedRay, thresh, depth - 1), m.kr);
+		I += prod(traceRay(scene, reflectedRay, thresh, depth + 1), m.kr);
 
 		return I;
 	
