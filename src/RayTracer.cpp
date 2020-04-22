@@ -26,8 +26,7 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 	const vec3f& thresh, int depth )
 {
 	isect i;
-
-	if( scene->intersect( r, i ) ) {
+	if (scene->intersect( r, i ) ) {
 		// YOUR CODE HERE
 
 		// An intersection occured!  We've got work to do.  For now,
@@ -40,7 +39,12 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 		// rays.
 
 		const Material& m = i.getMaterial();
-		return m.shade(scene, r, i);
+		vec3f I = m.shade(scene, r, i);
+
+		ray reflectedRay = reflectDirection(r, i);
+		I += prod(traceRay(scene, reflectedRay, thresh, depth - 1), m.kr);
+
+		return I;
 	
 	} else {
 		// No intersection.  This ray travels to infinity, so we color
@@ -160,4 +164,16 @@ void RayTracer::tracePixel( int i, int j )
 	pixel[0] = (int)( 255.0 * col[0]);
 	pixel[1] = (int)( 255.0 * col[1]);
 	pixel[2] = (int)( 255.0 * col[2]);
+}
+
+ray RayTracer::reflectDirection(const ray &rDirect, const isect &i) {
+	// https://www.fabrizioduroni.it/2017/08/25/how-to-calculate-reflection-vector.html
+
+	vec3f outDir = 2 * i.N.dot(rDirect.getDirection()) * i.N - 
+		rDirect.getDirection();
+
+	vec3f outPos = rDirect.getPosition() + 
+		rDirect.getDirection() * i.t;
+
+	return ray(outPos, outDir);
 }

@@ -26,6 +26,8 @@ public:
 
 	bool sceneLoaded();
 
+	ray reflectDirection(const ray& rDirect, const isect& i);
+
 private:
 	unsigned char *buffer;
 	int buffer_width, buffer_height;
