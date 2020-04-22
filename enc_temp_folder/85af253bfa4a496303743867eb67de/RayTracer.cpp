@@ -180,6 +180,7 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 
 
 		return phong + reflectColor + refractColor;
+		// return phong + reflectColor ;
 	}
 	else
 	{

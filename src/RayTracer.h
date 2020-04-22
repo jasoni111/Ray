@@ -3,6 +3,8 @@
 
 // The main ray tracer.
 
+#include <vector>
+
 #include "scene/scene.h"
 #include "scene/ray.h"
 
@@ -13,7 +15,7 @@ public:
     ~RayTracer();
 
     vec3f trace( Scene *scene, double x, double y );
-	vec3f traceRay( Scene *scene, const ray& r, const vec3f& thresh, int depth );
+	vec3f traceRay( Scene *scene, const ray& r, const vec3f& thresh, int depth, vector< Material>);
 
 	void getBuffer( unsigned char *&buf, int &w, int &h );
 	double aspectRatio();

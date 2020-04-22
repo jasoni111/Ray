@@ -13,6 +13,15 @@ class Scene;
 class ray;
 class isect;
 
+namespace 
+{
+    int ItemIdentifier = 0;
+	int getItemIdentifier()
+	{
+        return ItemIdentifier++;
+	}
+}
+
 class Material
 {
 public:
@@ -24,11 +33,12 @@ public:
         , kr( vec3f( 0.0, 0.0, 0.0 ) )
         , kt( vec3f( 0.0, 0.0, 0.0 ) )
         , shininess( 0.0 ) 
-		, index(1.0) {}
+		, index(1.0)
+		, id(getItemIdentifier()){}
 
     Material( const vec3f& e, const vec3f& a, const vec3f& s, 
               const vec3f& d, const vec3f& r, const vec3f& t, double sh, double in)
-        : ke( e ), ka( a ), ks( s ), kd( d ), kr( r ), kt( t ), shininess( sh ), index( in ) {}
+        : ke( e ), ka( a ), ks( s ), kd( d ), kr( r ), kt( t ), shininess( sh ), index( in ), id(getItemIdentifier()) {}
 
 	virtual vec3f shade( Scene *scene, const ray& r, const isect& i ) const;
 
@@ -41,6 +51,8 @@ public:
     
     double shininess;
     double index;               // index of refraction
+
+    double id;                  
 
     
                                 // material with zero coeffs for everything
