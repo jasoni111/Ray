@@ -26,8 +26,8 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
                           const vec3f& thresh, int depth)
 {
 	isect i;
-	auto max_depth = 10;
-	if (depth >= max_depth)
+	
+	if(depth > max_depth)
 	{
 		return vec3f(0, 0, 0);
 	}
