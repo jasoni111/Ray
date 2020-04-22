@@ -9,6 +9,10 @@ bool Box::intersectLocal( const ray& r, isect& i ) const
 	// YOUR CODE HERE:
     // Add box intersection code here.
 	// it currently ignores all boxes and just returns false.
+<<<<<<< HEAD
+	
+	return false;
+=======
 
 	// https://www.rose-hulman.edu/class/csse/csse451/AABB/
 	// Also read the implementation in scene.cpp
@@ -69,6 +73,5 @@ bool Box::intersectLocal( const ray& r, isect& i ) const
 	}
 
 	return true;
-
-	
+>>>>>>> a04a7da62da8c3773d454dea03960057a28aa55a
 }

@@ -3,7 +3,6 @@
 
 #include "Box.h"
 
-
 bool Box::intersectLocal( const ray& r, isect& i ) const
 {
 	// YOUR CODE HERE:
@@ -69,6 +68,4 @@ bool Box::intersectLocal( const ray& r, isect& i ) const
 	}
 
 	return true;
-
-	
 }
