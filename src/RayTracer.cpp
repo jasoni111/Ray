@@ -13,26 +13,27 @@
 // through the projection plane, and out into the scene.  All we do is
 // enter the main ray-tracing method, getting things started by plugging
 // in an initial ray weight of (0.0,0.0,0.0) and an initial recursion depth of 0.
-vec3f RayTracer::trace( Scene *scene, double x, double y )
+vec3f RayTracer::trace(Scene* scene, double x, double y)
 {
-    ray r( vec3f(0,0,0), vec3f(0,0,0) );
-    scene->getCamera()->rayThrough( x,y,r );
-	return traceRay( scene, r, vec3f(1.0,1.0,1.0), 0 ).clamp();
+	ray r(vec3f(0, 0, 0), vec3f(0, 0, 0));
+	scene->getCamera()->rayThrough(x, y, r);
+	return traceRay(scene, r, vec3f(1.0, 1.0, 1.0), 0).clamp();
 }
 
 // Do recursive ray tracing!  You'll want to insert a lot of code here
 // (or places called from here) to handle reflection, refraction, etc etc.
-vec3f RayTracer::traceRay( Scene *scene, const ray& r, 
-	const vec3f& thresh, int depth )
+vec3f RayTracer::traceRay(Scene* scene, const ray& r,
+                          const vec3f& thresh, int depth)
 {
 	isect i;
 	auto max_depth = 10;
-	if(depth>=max_depth)
+	if (depth >= max_depth)
 	{
 		return vec3f(0, 0, 0);
 	}
 
-	if( scene->intersect( r, i ) ) {
+	if (scene->intersect(r, i))
+	{
 		// YOUR CODE HERE
 
 		// An intersection occured!  We've got work to do.  For now,
@@ -45,21 +46,30 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 		// rays.
 
 		// auto phong = m.shade(scene,r,i,in)
-		
+
 		const Material& m = i.getMaterial();
 		vec3f I = m.shade(scene, r, i);
 
 		ray reflectedRay = reflectDirection(r, i);
-		I += prod(traceRay(scene, reflectedRay, thresh, depth + 1), m.kr);
+		I += prod(traceRay(scene, reflectedRay, thresh, depth + 1), m.kr*0.1);
 
+		vec3f refractRay{ 0.0,0.0,0.0 };
+
+		// if(m.kt.length()>0)
+		// {
+		// 	const auto n
+		// }
+		
+		
 		return I;
-	
-	} else {
+	}
+	else
+	{
 		// No intersection.  This ray travels to infinity, so we color
 		// it according to the background color, which in this (simple) case
 		// is just black.
 
-		return vec3f( 0.0, 0.0, 0.0 );
+		return vec3f(0.0, 0.0, 0.0);
 	}
 }
 
@@ -79,7 +89,7 @@ RayTracer::~RayTracer()
 	delete scene;
 }
 
-void RayTracer::getBuffer( unsigned char *&buf, int &w, int &h )
+void RayTracer::getBuffer(unsigned char*& buf, int& w, int& h)
 {
 	buf = buffer;
 	w = buffer_width;
@@ -96,40 +106,40 @@ bool RayTracer::sceneLoaded()
 	return m_bSceneLoaded;
 }
 
-bool RayTracer::loadScene( char* fn )
+bool RayTracer::loadScene(char* fn)
 {
 	try
 	{
-		scene = readScene( fn );
+		scene = readScene(fn);
 	}
-	catch( ParseError pe )
+	catch (ParseError pe)
 	{
-		fl_alert( "ParseError: %s\n", pe );
+		fl_alert("ParseError: %s\n", pe);
 		return false;
 	}
 
-	if( !scene )
+	if (!scene)
 		return false;
-	
+
 	buffer_width = 256;
 	buffer_height = (int)(buffer_width / scene->getCamera()->getAspectRatio() + 0.5);
 
 	bufferSize = buffer_width * buffer_height * 3;
 	buffer = new unsigned char[ bufferSize ];
-	
+
 	// separate objects into bounded and unbounded
 	scene->initScene();
-	
+
 	// Add any specialized scene loading code here
-	
+
 	m_bSceneLoaded = true;
 
 	return true;
 }
 
-void RayTracer::traceSetup( int w, int h )
+void RayTracer::traceSetup(int w, int h)
 {
-	if( buffer_width != w || buffer_height != h )
+	if (buffer_width != w || buffer_height != h)
 	{
 		buffer_width = w;
 		buffer_height = h;
@@ -138,50 +148,54 @@ void RayTracer::traceSetup( int w, int h )
 		delete [] buffer;
 		buffer = new unsigned char[ bufferSize ];
 	}
-	memset( buffer, 0, w*h*3 );
+	memset(buffer, 0, w * h * 3);
 }
 
-void RayTracer::traceLines( int start, int stop )
+void RayTracer::traceLines(int start, int stop)
 {
 	vec3f col;
-	if( !scene )
+	if (!scene)
 		return;
 
-	if( stop > buffer_height )
+	if (stop > buffer_height)
 		stop = buffer_height;
 
-	for( int j = start; j < stop; ++j )
-		for( int i = 0; i < buffer_width; ++i )
-			tracePixel(i,j);
+	for (int j = start; j < stop; ++j)
+		for (int i = 0; i < buffer_width; ++i)
+			tracePixel(i, j);
 }
 
-void RayTracer::tracePixel( int i, int j )
+void RayTracer::tracePixel(int i, int j)
 {
 	vec3f col;
 
-	if( !scene )
+	if (!scene)
 		return;
 
-	double x = double(i)/double(buffer_width);
-	double y = double(j)/double(buffer_height);
+	double x = double(i) / double(buffer_width);
+	double y = double(j) / double(buffer_height);
 
-	col = trace( scene,x,y );
+	col = trace(scene, x, y);
 
-	unsigned char *pixel = buffer + ( i + j * buffer_width ) * 3;
+	unsigned char* pixel = buffer + (i + j * buffer_width) * 3;
 
-	pixel[0] = (int)( 255.0 * col[0]);
-	pixel[1] = (int)( 255.0 * col[1]);
-	pixel[2] = (int)( 255.0 * col[2]);
+	pixel[0] = (int)(255.0 * col[0]);
+	pixel[1] = (int)(255.0 * col[1]);
+	pixel[2] = (int)(255.0 * col[2]);
 }
 
-ray RayTracer::reflectDirection(const ray &rDirect, const isect &i) {
+ray RayTracer::reflectDirection(const ray& rDirect, const isect& i)
+{
 	// https://www.fabrizioduroni.it/2017/08/25/how-to-calculate-reflection-vector.html
 
-	vec3f outDir = 2 * i.N.dot(rDirect.getDirection()) * i.N - 
-		rDirect.getDirection();
+	const auto& Normal = i.N;
+	const auto& V = rDirect.getDirection();
+	;
 
-	vec3f outPos = rDirect.getPosition() + 
-		rDirect.getDirection() * i.t;
+	vec3f outPos = rDirect.at(i.t);
+	vec3f outDir =
+		(V - 2 * Normal.dot(V) * Normal).normalize();
+
 
 	return ray(outPos, outDir);
 }

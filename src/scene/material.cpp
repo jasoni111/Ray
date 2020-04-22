@@ -54,14 +54,7 @@ vec3f Material::shade(Scene* scene, const ray& r, const isect& i) const
 			     , Lightcolor), shadowAttenuation);
 		color += ret;
 	}
-	//
-	// for(int i =0;i<3;++i)
-	// {
-	// 	if (color[i]<1.0)
-	// 	{
-	// 		color[i] = 1.0;
-	// 	}
-	// }
+
 
 	return color;
 }
