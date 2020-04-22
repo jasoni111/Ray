@@ -92,6 +92,46 @@ void TraceUI::cb_depthSlides(Fl_Widget* o, void* v)
 	((TraceUI*)(o->user_data()))->m_nDepth=int( ((Fl_Slider *)o)->value() ) ;
 }
 
+void TraceUI::cb_attenConstantSlides(Fl_Widget* o, void* v)
+{
+	((TraceUI*)(o->user_data()))->m_nAttenConstant = int(((Fl_Slider*)o)->value());
+}
+
+void TraceUI::cb_attenLinearSlides(Fl_Widget* o, void* v)
+{
+	((TraceUI*)(o->user_data()))->m_nAttenLinear = int(((Fl_Slider*)o)->value());
+}
+
+void TraceUI::cb_attenQuadricSlides(Fl_Widget* o, void* v)
+{
+	((TraceUI*)(o->user_data()))->m_nAttenQuadric = int(((Fl_Slider*)o)->value());
+}
+
+void TraceUI::cb_thresholdSlides(Fl_Widget* o, void* v)
+{
+	((TraceUI*)(o->user_data()))->m_nThreshold = int(((Fl_Slider*)o)->value());
+}
+
+void TraceUI::cb_ambientLightSlides(Fl_Widget* o, void* v)
+{
+	((TraceUI*)(o->user_data()))->m_nAmbientLight = int(((Fl_Slider*)o)->value());
+}
+
+void TraceUI::cb_numOfSupPixelSlides(Fl_Widget* o, void* v)
+{
+	((TraceUI*)(o->user_data()))->m_nNumOfSupPixel = int(((Fl_Slider*)o)->value());
+}
+
+void TraceUI::cb_focalLengthSlides(Fl_Widget* o, void* v)
+{
+	((TraceUI*)(o->user_data()))->m_nFocalLength = int(((Fl_Slider*)o)->value());
+}
+
+void TraceUI::cb_apertureSizeSlides(Fl_Widget* o, void* v)
+{
+	((TraceUI*)(o->user_data()))->m_nApertureSize = int(((Fl_Slider*)o)->value());
+}
+
 void TraceUI::cb_render(Fl_Widget* o, void* v)
 {
 	char buffer[256];
@@ -215,48 +255,169 @@ TraceUI::TraceUI() {
 	// init.
 	m_nDepth = 0;
 	m_nSize = 150;
-	m_mainWindow = new Fl_Window(100, 40, 320, 100, "Ray <Not Loaded>");
-		m_mainWindow->user_data((void*)(this));	// record self to be used by static callback functions
-		// install menu bar
-		m_menubar = new Fl_Menu_Bar(0, 0, 320, 25);
-		m_menubar->menu(menuitems);
 
-		// install slider depth
-		m_depthSlider = new Fl_Value_Slider(10, 30, 180, 20, "Depth");
-		m_depthSlider->user_data((void*)(this));	// record self to be used by static callback functions
-		m_depthSlider->type(FL_HOR_NICE_SLIDER);
-        m_depthSlider->labelfont(FL_COURIER);
-        m_depthSlider->labelsize(12);
-		m_depthSlider->minimum(0);
-		m_depthSlider->maximum(10);
-		m_depthSlider->step(1);
-		m_depthSlider->value(m_nDepth);
-		m_depthSlider->align(FL_ALIGN_RIGHT);
-		m_depthSlider->callback(cb_depthSlides);
+	m_nAttenConstant = 0;
+	m_nAttenLinear = 0;
+	m_nAttenQuadric = 0;
+	m_nAmbientLight = 0;
+	m_nThreshold = 0;
+	m_nNumOfSupPixel = 1;
+	m_nFocalLength = 5;
+	m_nApertureSize = 5;
 
-		// install slider size
-		m_sizeSlider = new Fl_Value_Slider(10, 55, 180, 20, "Size");
-		m_sizeSlider->user_data((void*)(this));	// record self to be used by static callback functions
-		m_sizeSlider->type(FL_HOR_NICE_SLIDER);
-        m_sizeSlider->labelfont(FL_COURIER);
-        m_sizeSlider->labelsize(12);
-		m_sizeSlider->minimum(64);
-		m_sizeSlider->maximum(512);
-		m_sizeSlider->step(1);
-		m_sizeSlider->value(m_nSize);
-		m_sizeSlider->align(FL_ALIGN_RIGHT);
-		m_sizeSlider->callback(cb_sizeSlides);
+	m_mainWindow = new Fl_Window(100, 40, 340, 480, "Ray <Not Loaded>");
+	m_mainWindow->user_data((void*)(this));	// record self to be used by static callback functions
+	// install menu bar
+	m_menubar = new Fl_Menu_Bar(0, 0, 320, 25);
+	m_menubar->menu(menuitems);
 
-		m_renderButton = new Fl_Button(240, 27, 70, 25, "&Render");
-		m_renderButton->user_data((void*)(this));
-		m_renderButton->callback(cb_render);
+	int h = 5;
 
-		m_stopButton = new Fl_Button(240, 55, 70, 25, "&Stop");
-		m_stopButton->user_data((void*)(this));
-		m_stopButton->callback(cb_stop);
+	// install slider depth
+	m_depthSlider = new Fl_Value_Slider(10, h+=25, 180, 20, "Depth");
+	m_depthSlider->user_data((void*)(this));	// record self to be used by static callback functions
+	m_depthSlider->type(FL_HOR_NICE_SLIDER);
+    m_depthSlider->labelfont(FL_COURIER);
+    m_depthSlider->labelsize(12);
+	m_depthSlider->minimum(0);
+	m_depthSlider->maximum(10);
+	m_depthSlider->step(1);
+	m_depthSlider->value(m_nDepth);
+	m_depthSlider->align(FL_ALIGN_RIGHT);
+	m_depthSlider->callback(cb_depthSlides);
 
-		m_mainWindow->callback(cb_exit2);
-		m_mainWindow->when(FL_HIDE);
+	// install slider size
+	m_sizeSlider = new Fl_Value_Slider(10, h+=25, 180, 20, "Size");
+	m_sizeSlider->user_data((void*)(this));	// record self to be used by static callback functions
+	m_sizeSlider->type(FL_HOR_NICE_SLIDER);
+    m_sizeSlider->labelfont(FL_COURIER);
+    m_sizeSlider->labelsize(12);
+	m_sizeSlider->minimum(64);
+	m_sizeSlider->maximum(512);
+	m_sizeSlider->step(1);
+	m_sizeSlider->value(m_nSize);
+	m_sizeSlider->align(FL_ALIGN_RIGHT);
+	m_sizeSlider->callback(cb_sizeSlides);
+
+	// install slider Attenuation, Constant
+	m_attenConstantSlide = new Fl_Value_Slider(10, h += 25, 180, 20, "Attenuation, Constant");
+	m_attenConstantSlide->user_data((void*)(this));	// record self to be used by static callback functions
+	m_attenConstantSlide->type(FL_HOR_NICE_SLIDER);
+	m_attenConstantSlide->labelfont(FL_COURIER);
+	m_attenConstantSlide->labelsize(12);
+	m_attenConstantSlide->minimum(0);
+	m_attenConstantSlide->maximum(1);
+	m_attenConstantSlide->step(0.01);
+	m_attenConstantSlide->value(m_nAttenConstant);
+	m_attenConstantSlide->align(FL_ALIGN_RIGHT);
+	m_attenConstantSlide->callback(cb_attenConstantSlides);
+
+	// install Attenuation, Linear
+	m_attenLinearSlide = new Fl_Value_Slider(10, h += 25, 180, 20, "Attenuation, Linear");
+	m_attenLinearSlide->user_data((void*)(this));	// record self to be used by static callback functions
+	m_attenLinearSlide->type(FL_HOR_NICE_SLIDER);
+	m_attenLinearSlide->labelfont(FL_COURIER);
+	m_attenLinearSlide->labelsize(12);
+	m_attenLinearSlide->minimum(0);
+	m_attenLinearSlide->maximum(1);
+	m_attenLinearSlide->step(0.01);
+	m_attenLinearSlide->value(m_nAttenLinear);
+	m_attenLinearSlide->align(FL_ALIGN_RIGHT);
+	m_attenLinearSlide->callback(cb_attenLinearSlides);
+
+	// install Attenuation, Quadric
+	m_attenQuadricSlide = new Fl_Value_Slider(10, h += 25, 180, 20, "Attenuation, Quadric");
+	m_attenQuadricSlide->user_data((void*)(this));	// record self to be used by static callback functions
+	m_attenQuadricSlide->type(FL_HOR_NICE_SLIDER);
+	m_attenQuadricSlide->labelfont(FL_COURIER);
+	m_attenQuadricSlide->labelsize(12);
+	m_attenQuadricSlide->minimum(0);
+	m_attenQuadricSlide->maximum(1);
+	m_attenQuadricSlide->step(0.01);
+	m_attenQuadricSlide->value(m_nAttenQuadric);
+	m_attenQuadricSlide->align(FL_ALIGN_RIGHT);
+	m_attenQuadricSlide->callback(cb_attenQuadricSlides);
+
+	// install slider Ambient Light
+	m_ambientLightSlide = new Fl_Value_Slider(10, h += 25, 180, 20, "Ambient Light");
+	m_ambientLightSlide->user_data((void*)(this));	// record self to be used by static callback functions
+	m_ambientLightSlide->type(FL_HOR_NICE_SLIDER);
+	m_ambientLightSlide->labelfont(FL_COURIER);
+	m_ambientLightSlide->labelsize(12);
+	m_ambientLightSlide->minimum(0);
+	m_ambientLightSlide->maximum(1);
+	m_ambientLightSlide->step(0.01);
+	m_ambientLightSlide->value(m_nAmbientLight);
+	m_ambientLightSlide->align(FL_ALIGN_RIGHT);
+	m_ambientLightSlide->callback(cb_ambientLightSlides);
+
+	// install slider Threshold
+	m_thresholdSlide = new Fl_Value_Slider(10, h += 25, 180, 20, "Threshold");
+	m_thresholdSlide->user_data((void*)(this));	// record self to be used by static callback functions
+	m_thresholdSlide->type(FL_HOR_NICE_SLIDER);
+	m_thresholdSlide->labelfont(FL_COURIER);
+	m_thresholdSlide->labelsize(12);
+	m_thresholdSlide->minimum(0);
+	m_thresholdSlide->maximum(1);
+	m_thresholdSlide->step(0.01);
+	m_thresholdSlide->value(m_nThreshold);
+	m_thresholdSlide->align(FL_ALIGN_RIGHT);
+	m_thresholdSlide->callback(cb_thresholdSlides);
+
+	h += 25;
+
+	// install slider Number of sup-pixels
+	m_numOfSupPixel = new Fl_Value_Slider(10, h += 25, 180, 20, "Number of sup-pixels");
+	m_numOfSupPixel->user_data((void*)(this));	// record self to be used by static callback functions
+	m_numOfSupPixel->type(FL_HOR_NICE_SLIDER);
+	m_numOfSupPixel->labelfont(FL_COURIER);
+	m_numOfSupPixel->labelsize(12);
+	m_numOfSupPixel->minimum(1);
+	m_numOfSupPixel->maximum(5);
+	m_numOfSupPixel->step(1);
+	m_numOfSupPixel->value(m_nNumOfSupPixel);
+	m_numOfSupPixel->align(FL_ALIGN_RIGHT);
+	m_numOfSupPixel->callback(cb_numOfSupPixelSlides);
+
+	h += 25;
+	h += 25;
+
+	// install slider Focal Length
+	m_focalLength = new Fl_Value_Slider(10, h += 25, 180, 20, "Focal Length");
+	m_focalLength->user_data((void*)(this));	// record self to be used by static callback functions
+	m_focalLength->type(FL_HOR_NICE_SLIDER);
+	m_focalLength->labelfont(FL_COURIER);
+	m_focalLength->labelsize(12);
+	m_focalLength->minimum(1);
+	m_focalLength->maximum(5);
+	m_focalLength->step(0.01);
+	m_focalLength->value(m_nFocalLength);
+	m_focalLength->align(FL_ALIGN_RIGHT);
+	m_focalLength->callback(cb_focalLengthSlides);
+
+	// install slider Aperture Size
+	m_apertureSize = new Fl_Value_Slider(10, h += 25, 180, 20, "Aperture Size");
+	m_apertureSize->user_data((void*)(this));	// record self to be used by static callback functions
+	m_apertureSize->type(FL_HOR_NICE_SLIDER);
+	m_apertureSize->labelfont(FL_COURIER);
+	m_apertureSize->labelsize(12);
+	m_apertureSize->minimum(1);
+	m_apertureSize->maximum(5);
+	m_apertureSize->step(1);
+	m_apertureSize->value(m_nApertureSize);
+	m_apertureSize->align(FL_ALIGN_RIGHT);
+	m_apertureSize->callback(cb_apertureSizeSlides);
+
+	m_renderButton = new Fl_Button(240, 27, 70, 25, "&Render");
+	m_renderButton->user_data((void*)(this));
+	m_renderButton->callback(cb_render);
+
+	m_stopButton = new Fl_Button(240, 55, 70, 25, "&Stop");
+	m_stopButton->user_data((void*)(this));
+	m_stopButton->callback(cb_stop);
+
+	m_mainWindow->callback(cb_exit2);
+	m_mainWindow->when(FL_HIDE);
     m_mainWindow->end();
 
 	// image view
