@@ -142,6 +142,7 @@ void TraceUI::cb_render(Fl_Widget* o, void* v)
 					}
 				}
 
+				pUI->raytracer->max_depth = pUI->getDepth();
 				pUI->raytracer->tracePixel( x, y );
 		
 			}
