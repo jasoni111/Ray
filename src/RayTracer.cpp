@@ -26,7 +26,13 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 	const vec3f& thresh, int depth )
 {
 	isect i;
-	if (scene->intersect( r, i ) ) {
+	auto max_depth = 10;
+	if(depth>=max_depth)
+	{
+		return vec3f(0, 0, 0);
+	}
+
+	if( scene->intersect( r, i ) ) {
 		// YOUR CODE HERE
 
 		// An intersection occured!  We've got work to do.  For now,
@@ -38,6 +44,8 @@ vec3f RayTracer::traceRay( Scene *scene, const ray& r,
 		// more steps: add in the contributions from reflected and refracted
 		// rays.
 
+		// auto phong = m.shade(scene,r,i,in)
+		
 		const Material& m = i.getMaterial();
 		vec3f I = m.shade(scene, r, i);
 
