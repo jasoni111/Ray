@@ -29,6 +29,17 @@ public:
 	Fl_Slider*			m_sizeSlider;
 	Fl_Slider*			m_depthSlider;
 
+	Fl_Slider* m_attenConstantSlide;
+	Fl_Slider* m_attenLinearSlide;
+	Fl_Slider* m_attenQuadricSlide;
+	Fl_Slider* m_ambientLightSlide;
+	Fl_Slider* m_thresholdSlide;
+
+	Fl_Slider* m_numOfSupPixel;
+
+	Fl_Slider* m_focalLength;
+	Fl_Slider* m_apertureSize;
+
 	Fl_Button*			m_renderButton;
 	Fl_Button*			m_stopButton;
 
@@ -48,6 +59,15 @@ private:
 	int			m_nSize;
 	int			m_nDepth;
 
+	double m_nAttenConstant;
+	double m_nAttenLinear;
+	double m_nAttenQuadric;
+	double m_nAmbientLight;
+	double m_nThreshold;
+	double m_nNumOfSupPixel;
+	double m_nFocalLength;
+	double m_nApertureSize;
+
 // static class members
 	static Fl_Menu_Item menuitems[];
 
@@ -62,6 +82,15 @@ private:
 
 	static void cb_sizeSlides(Fl_Widget* o, void* v);
 	static void cb_depthSlides(Fl_Widget* o, void* v);
+
+	static void cb_attenConstantSlides(Fl_Widget* o, void* v);
+	static void cb_attenLinearSlides(Fl_Widget* o, void* v);
+	static void cb_attenQuadricSlides(Fl_Widget* o, void* v);
+	static void cb_ambientLightSlides(Fl_Widget* o, void* v);
+	static void cb_thresholdSlides(Fl_Widget* o, void* v);
+	static void cb_numOfSupPixelSlides(Fl_Widget* o, void* v);
+	static void cb_focalLengthSlides(Fl_Widget* o, void* v);
+	static void cb_apertureSizeSlides(Fl_Widget* o, void* v);
 
 	static void cb_render(Fl_Widget* o, void* v);
 	static void cb_stop(Fl_Widget* o, void* v);
