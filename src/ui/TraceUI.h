@@ -18,16 +18,17 @@
 
 #include "TraceGLWindow.h"
 
-class TraceUI {
+class TraceUI
+{
 public:
 	TraceUI();
 
 	// The FLTK widgets
-	Fl_Window*			m_mainWindow;
-	Fl_Menu_Bar*		m_menubar;
+	Fl_Window* m_mainWindow;
+	Fl_Menu_Bar* m_menubar;
 
-	Fl_Slider*			m_sizeSlider;
-	Fl_Slider*			m_depthSlider;
+	Fl_Slider* m_sizeSlider;
+	Fl_Slider* m_depthSlider;
 
 	Fl_Slider* m_attenConstantSlide;
 	Fl_Slider* m_attenLinearSlide;
@@ -40,24 +41,25 @@ public:
 	Fl_Slider* m_focalLength;
 	Fl_Slider* m_apertureSize;
 
-	Fl_Button*			m_renderButton;
-	Fl_Button*			m_stopButton;
+	Fl_Button* m_renderButton;
+	Fl_Button* m_stopButton;
 
-	TraceGLWindow*		m_traceGlWindow;
+	TraceGLWindow* m_traceGlWindow;
 
 	// member functions
 	void show();
 
-	void		setRayTracer(RayTracer *tracer);
+	void setRayTracer(RayTracer* tracer);
 
-	int			getSize();
-	int			getDepth();
-
+	int getSize();
+	int getDepth();
+	const double &getNumOfSupPixel() const;
+	const double& getThreshold() const;
 private:
-	RayTracer*	raytracer;
+	RayTracer* raytracer;
 
-	int			m_nSize;
-	int			m_nDepth;
+	int m_nSize;
+	int m_nDepth;
 
 	double m_nAttenConstant;
 	double m_nAttenLinear;
@@ -68,7 +70,7 @@ private:
 	double m_nFocalLength;
 	double m_nApertureSize;
 
-// static class members
+	// static class members
 	static Fl_Menu_Item menuitems[];
 
 	static TraceUI* whoami(Fl_Menu_* o);

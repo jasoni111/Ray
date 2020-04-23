@@ -236,6 +236,16 @@ int TraceUI::getDepth()
 	return m_nDepth;
 }
 
+const double & TraceUI::getNumOfSupPixel() const
+{
+	return this->m_nNumOfSupPixel;
+}
+
+const double& TraceUI::getThreshold() const
+{
+	return this->m_nThreshold;
+}
+
 // menu definition
 Fl_Menu_Item TraceUI::menuitems[] = {
 	{ "&File",		0, 0, 0, FL_SUBMENU },

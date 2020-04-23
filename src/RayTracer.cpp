@@ -1,6 +1,6 @@
 // The main ray tracer.
 #define _USE_MATH_DEFINES
-
+#define  NOMINMAX
 #include <Fl/fl_ask.h>
 
 #include "RayTracer.h"
@@ -14,6 +14,11 @@
 #include "fileio/parse.h"
 #include <array>
 #include <cmath>
+
+#include "ui/TraceUI.h"
+extern TraceUI* traceUI;
+
+
 
 namespace
 {
@@ -141,6 +146,13 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 
 		const Material& m = i.getMaterial();
 		const auto phong = m.shade(scene, r, i);
+
+		if (traceUI->getThreshold() > phong.length())
+		{
+			return phong;
+		}
+
+		
 		if (!materials_in.empty())
 		{
 			if (materials_in.back().id == m.id)
@@ -156,6 +168,8 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 		const auto reflectColor = prod(traceRay(scene, reflectedRay, thresh
 		                                        , depth + 1, materials_in)
 		                               , m.kr);
+
+
 
 		vec3f refractRay{0.0, 0.0, 0.0};
 
@@ -300,7 +314,9 @@ void RayTracer::tracePixel(int i, int j)
 	{
 		//super sample
 		col = {0, 0, 0};
-		const auto superSampleRate = 2;
+		
+		const auto superSampleRate = traceUI->getNumOfSupPixel();
+		
 		//non adaptive
 		const auto dw = 1.0 / buffer_width / superSampleRate;
 		const auto dh = 1.0 / buffer_height / superSampleRate;

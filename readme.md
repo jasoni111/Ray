@@ -1,4 +1,4 @@
-HKUST login(s): zljieong, mcyim
+\HKUST login(s): zljieong, mcyim
 ```
 W adaptive termination				yes/no
 W antialiasing by supersampling			yes/no
@@ -23,14 +23,25 @@ BW Warn model					yes/no
 4B CSG						yes/no
 4B caustics					yes/no
 ```
+# Basic
+- [x] Box Intersection
+- [x] Phong specular-reflection model
+- [x] multiple light sources,
+- [ ]   distance attenuation,
+- [x]   Directional lights
+- [ ]   Point lights
+- [x] Shadow Attenuation	
+- [x] Reflection
+- [x] Refraction
+# Extra:
 
-- [ ] W adaptive termination				
+- [x] W adaptive termination				
 - [x] W antialiasing by supersampling			
 - [ ] +W jittering					
 - [ ] B spot lights					
 - [ ] B background image				
 - [ ] B accelerate shadow atteuation			
-- [ ] B overlapping tranparent objects		
+- [x] B overlapping tranparent objects		
 - [ ] BW texture mapping (diffuse and transparent)	
 - [ ] BW antialiasing by adaptive supersampling	
 - [ ] BW Warn model					
