@@ -53,8 +53,12 @@ public:
 
 	int getSize();
 	int getDepth();
-	const double &getNumOfSupPixel() const;
+	const double& getNumOfSupPixel() const;
 	const double& getThreshold() const;
+	const double& getAttenConst() const;
+	const double& getAttenLinear() const;
+	const double& getAttenQuad() const;
+
 private:
 	RayTracer* raytracer;
 

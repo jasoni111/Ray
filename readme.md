@@ -27,7 +27,7 @@ BW Warn model					yes/no
 - [x] Box Intersection
 - [x] Phong specular-reflection model
 - [x] multiple light sources,
-- [ ]   distance attenuation,
+- [x]   distance attenuation,
 - [x]   Directional lights
 - [ ]   Point lights
 - [x] Shadow Attenuation	

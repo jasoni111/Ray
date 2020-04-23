@@ -246,6 +246,20 @@ const double& TraceUI::getThreshold() const
 	return this->m_nThreshold;
 }
 
+const double& TraceUI::getAttenConst() const
+{
+	return this->m_nAttenConstant;
+}
+
+const double& TraceUI::getAttenLinear() const
+{
+	return this->m_nAttenLinear;
+}
+
+const double& TraceUI::getAttenQuad() const
+{
+	return this->m_nAttenQuadric;
+}
 // menu definition
 Fl_Menu_Item TraceUI::menuitems[] = {
 	{ "&File",		0, 0, 0, FL_SUBMENU },
@@ -268,7 +282,7 @@ TraceUI::TraceUI() {
 
 	m_nAttenConstant = 0;
 	m_nAttenLinear = 0;
-	m_nAttenQuadric = 0;
+	m_nAttenQuadric = 1;
 	m_nAmbientLight = 0;
 	m_nThreshold = 0;
 	m_nNumOfSupPixel = 1;

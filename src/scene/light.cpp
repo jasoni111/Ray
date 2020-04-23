@@ -1,10 +1,16 @@
+#define NOMINMAX
 #include <cmath>
 
 #include "light.h"
 
 #include <ppl.h>
 #include <vector>
+
+#include "../ui/TraceUI.h"
 #include "ray.h"
+
+
+extern TraceUI* traceUI;
 
 
 double DirectionalLight::distanceAttenuation(const vec3f& P) const
@@ -31,11 +37,11 @@ vec3f DirectionalLight::shadowAttenuation(const vec3f& P) const
 	const auto isSoftShadow = true;
 	if (isSoftShadow)
 	{
-		auto sampleVecs = helperFun::sampleRay(d, 0.1, 20);
-		for(const auto & sampleVec:sampleVecs)
+		auto sampleVecs = helperFun::sampleRay(d, 0.05, 20);
+		for (const auto& sampleVec : sampleVecs)
 		{
 			isect i;
-			if (scene->intersect(ray{ P, sampleVec }, i))
+			if (scene->intersect(ray{P, sampleVec}, i))
 			{
 				ret += prod(color, i.getMaterial().kt);
 			}
@@ -82,7 +88,15 @@ double PointLight::distanceAttenuation(const vec3f& P) const
 	// You'll need to modify this method to attenuate the intensity 
 	// of the light based on the distance between the source and the 
 	// point P.  For now, I assume no attenuation and just return 1.0
-	return 1.0;
+	double d = vec3f(P - position).length();
+	// pScene->
+	// double a = pScene->distAtteA, b = pScene->distAtteB, c = pScene->distAtteC;
+	// double ret = 1.0 / (a + b * d + c * d * d);
+	// return std::min(1.0, ret);
+	double ret = 1.0 / (traceUI->getAttenConst() + traceUI->getAttenLinear() * d + traceUI->getAttenQuad() * d * d);
+
+
+	return std::min(1.0, ret);
 }
 
 vec3f PointLight::getColor(const vec3f& P) const
