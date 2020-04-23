@@ -58,41 +58,36 @@ namespace
 
 		return std::array<double, 2>{inRefractionIndex, OutRefractionIndex};
 	}
-
+	template<class T>
+	T clamp(T x, T min,T max)
+	{
+		return std::max(std::min(x, max), min);
+	}
+	
 	vec3f calRefractionVec(vec3f i, vec3f Normal, double inIndex, double outIndex)
 	{
-		if (abs(abs(Normal * i) - 1) < RAY_EPSILON)
+		//reference : https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
+		if (std::abs(std::abs(Normal * i) - 1) < RAY_EPSILON)
 			return i;
 		if (inIndex == outIndex)
 		{
 			return i;
 		}
-		
-		double sinTheta1 = sqrt(1 - pow(Normal * i, 2));
-		double sinTheta2 = (inIndex * sinTheta1) / outIndex;
-		double theta1 = asin(sinTheta1);
-		double theta2 = asin(sinTheta2);
-		double sinTheta3 = sin(abs(theta1 - theta2));
-		
-		if (inIndex > outIndex)
+		const auto eta = inIndex / outIndex;
+		auto c1 = Normal.dot(i.normalize());
+		c1 = clamp(-1.0, 1.0, c1);
+		if(c1<0)
 		{
-			double critical = outIndex / inIndex;
+			c1 = -c1;
+		}
 		
-			if (critical - sinTheta1 > RAY_EPSILON)
-			{
-				double fac = sin(M_PI - theta2) / sinTheta3;
-				return -(-i * fac + (-Normal)).normalize();
-			}
-			else
-			{
-				return vec3f(0.0, 0.0, 0.0); //TIR
-			}
-		}
-		else
+		auto c2 = 1 - eta * eta * (1 - c1 * c1);
+		if(c2<0 || c2 >1)
 		{
-			double fac = sinTheta2 / sinTheta3;
-			return (i * fac + (-Normal)).normalize();
+			return { 0,0,0 };
 		}
+		c2 = std::sqrt(c2);
+		return eta*(i + c1 * Normal) - Normal * c2;
 	}
 }
 
@@ -149,7 +144,7 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 		{
 			if (materials_in.back().id == m.id)
 			{
-				// Normal = -Normal;
+				Normal = -Normal;
 			}
 		}
 
@@ -176,6 +171,7 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 			ray refractionRay{Pos, refractionVec};
 			refractColor = traceRay(scene, refractionRay, thresh
 			                        , depth + 1, materials_in);
+			refractColor = prod(refractColor, m.kt);
 		}
 
 
