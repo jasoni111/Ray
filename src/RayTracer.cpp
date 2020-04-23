@@ -58,12 +58,13 @@ namespace
 
 		return std::array<double, 2>{inRefractionIndex, OutRefractionIndex};
 	}
-	template<class T>
-	T clamp(T x, T min,T max)
+
+	template <class T>
+	T clamp(T x, T min, T max)
 	{
 		return std::max(std::min(x, max), min);
 	}
-	
+
 	vec3f calRefractionVec(vec3f i, vec3f Normal, double inIndex, double outIndex)
 	{
 		//reference : https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
@@ -76,18 +77,18 @@ namespace
 		const auto eta = inIndex / outIndex;
 		auto c1 = Normal.dot(i.normalize());
 		c1 = clamp(-1.0, 1.0, c1);
-		if(c1<0)
+		if (c1 < 0)
 		{
 			c1 = -c1;
 		}
-		
+
 		auto c2 = 1 - eta * eta * (1 - c1 * c1);
-		if(c2<0 || c2 >1)
+		if (c2 < 0 || c2 > 1)
 		{
-			return { 0,0,0 };
+			return {0, 0, 0};
 		}
 		c2 = std::sqrt(c2);
-		return eta*(i + c1 * Normal) - Normal * c2;
+		return eta * (i + c1 * Normal) - Normal * c2;
 	}
 }
 
@@ -279,6 +280,7 @@ void RayTracer::traceLines(int start, int stop)
 			tracePixel(i, j);
 }
 
+
 void RayTracer::tracePixel(int i, int j)
 {
 	vec3f col;
@@ -289,7 +291,29 @@ void RayTracer::tracePixel(int i, int j)
 	double x = double(i) / double(buffer_width);
 	double y = double(j) / double(buffer_height);
 
-	col = trace(scene, x, y);
+	const auto isAdaptiveSuperRes = false;
+	if (isAdaptiveSuperRes)
+	{
+		//adaptive
+	}
+	else
+	{
+		//super sample
+		col = {0, 0, 0};
+		const auto superSampleRate = 2;
+		//non adaptive
+		const auto dw = 1.0 / buffer_width / superSampleRate;
+		const auto dh = 1.0 / buffer_height / superSampleRate;
+		for (auto i = 0; i < superSampleRate; ++ i)
+		{
+			for (auto j = 0; j < superSampleRate; ++j)
+			{
+				col += trace(scene, x + i * dw, y + j * dh);
+			}
+		}
+		col /= superSampleRate * superSampleRate;
+		// col = trace(scene, x, y);
+	}
 
 	unsigned char* pixel = buffer + (i + j * buffer_width) * 3;
 
