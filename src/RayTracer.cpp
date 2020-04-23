@@ -189,7 +189,7 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 		ray reflectedRay{Pos, rVec};
 		auto reflectColor = traceRay(scene, reflectedRay, thresh
 		                             , depth + 1, materials_in);
-		auto glossyR = true;
+		auto glossyR = false;
 		if (glossyR && depth<max_depth)
 		{
 			auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 20);

@@ -113,7 +113,33 @@ vec3f PointLight::getDirection(const vec3f& P) const
 
 vec3f PointLight::shadowAttenuation(const vec3f& P) const
 {
-	// YOUR CODE HERE:
-	// You should implement shadow-handling code here.
-	return vec3f(1, 1, 1);
+	const auto d = getDirection(P);
+	isect i;
+	ray r(P, d);
+	auto ret = color;
+
+	if (this->getScene()->intersect(r, i))
+	{
+		ret = prod(color, i.getMaterial().kt);
+	}
+	const auto isSoftShadow = false;
+	if (isSoftShadow)
+	{
+		auto sampleVecs = helperFun::sampleRay(d, 0.05, 20);
+		for (const auto& sampleVec : sampleVecs)
+		{
+			isect i;
+			if (scene->intersect(ray{ P, sampleVec }, i))
+			{
+				ret += prod(color, i.getMaterial().kt);
+			}
+			else
+			{
+				ret += color;
+			}
+		}
+		ret /= 21;
+	}
+
+	return ret;
 }
