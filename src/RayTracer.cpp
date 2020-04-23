@@ -18,6 +18,27 @@
 #include "ui/TraceUI.h"
 extern TraceUI* traceUI;
 
+namespace helperFun
+{
+	double inline getRand(double r)
+	{
+		return (double)rand() / RAND_MAX * 2.0 * r - r;
+	}
+
+	std::vector<vec3f> sampleRay(vec3f rayVec, double r, int num_sample = 20)
+	{
+		std::vector<vec3f> toReturn;
+		vec3f up{0, 1, 0};
+		auto u = rayVec.cross(up).normalize();
+		auto v = u.cross(rayVec).normalize();
+		u = rayVec.cross(v).normalize();
+		for (auto i = 0; i < num_sample; ++i)
+		{
+			toReturn.push_back((rayVec + u * getRand(r) + v * getRand(r)).normalize());
+		}
+		return toReturn;
+	}
+}
 
 
 namespace
@@ -152,7 +173,7 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 			return phong;
 		}
 
-		
+
 		if (!materials_in.empty())
 		{
 			if (materials_in.back().id == m.id)
@@ -165,10 +186,21 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 			(V - 2 * Normal.dot(V) * Normal).normalize();
 
 		ray reflectedRay{Pos, rVec};
-		const auto reflectColor = prod(traceRay(scene, reflectedRay, thresh
-		                                        , depth + 1, materials_in)
-		                               , m.kr);
-
+		auto reflectColor = traceRay(scene, reflectedRay, thresh
+		                             , depth + 1, materials_in);
+		auto glossyR = true;
+		if (glossyR)
+		{
+			auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 30);
+			for (auto& sampleVec : sampleVecs)
+			{
+				ray reflectedRay{Pos, sampleVec};
+				reflectColor += traceRay(scene, reflectedRay, thresh,
+				                         std::max(max_depth-1, depth + 1), materials_in);
+			}
+			reflectColor /= 31;
+		}
+		reflectColor = prod(reflectColor, m.kr);
 
 
 		vec3f refractRay{0.0, 0.0, 0.0};
@@ -314,9 +346,9 @@ void RayTracer::tracePixel(int i, int j)
 	{
 		//super sample
 		col = {0, 0, 0};
-		
+
 		const auto superSampleRate = traceUI->getNumOfSupPixel();
-		
+
 		//non adaptive
 		const auto dw = 1.0 / buffer_width / superSampleRate;
 		const auto dh = 1.0 / buffer_height / superSampleRate;

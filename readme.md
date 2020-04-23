@@ -52,7 +52,7 @@ BW Warn model					yes/no
 - [ ]  Dof 					
 - [ ]  soft shadows, 		
 - [ ]  motion blur
-- [ ]  glossy reflection		
+- [x]  glossy reflection		
 - [ ] 3B high lever geometry (e.g. metaballs)		
 - [ ] 3B ray-intersection optimization		
 - [ ] 4B realistic shading model			

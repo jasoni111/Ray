@@ -4,6 +4,7 @@
 #include "ray.h"
 
 
+
 double DirectionalLight::distanceAttenuation(const vec3f& P) const
 {
 	// distance to light is infinite, so f(di) goes to 0.  Return 1.
