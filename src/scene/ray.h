@@ -7,6 +7,8 @@
 #ifndef __RAY_H__
 #define __RAY_H__
 
+#include <vector>
+
 #include "../vecmath/vecmath.h"
 #include "material.h"
 
@@ -92,5 +94,14 @@ public:
 
 const double RAY_EPSILON = 0.00001;
 const double NORMAL_EPSILON = 0.00001;
+
+
+
+namespace helperFun
+{
+    double inline getRand(double r);
+    std::vector<vec3f> sampleRay(vec3f rayVec, double r, int num_sample);
+}
+
 
 #endif // __RAY_H__

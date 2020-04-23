@@ -1,8 +1,10 @@
 #include <cmath>
 
 #include "light.h"
-#include "ray.h"
 
+#include <ppl.h>
+#include <vector>
+#include "ray.h"
 
 
 double DirectionalLight::distanceAttenuation(const vec3f& P) const
@@ -26,6 +28,39 @@ vec3f DirectionalLight::shadowAttenuation(const vec3f& P) const
 	{
 		ret = prod(color, i.getMaterial().kt);
 	}
+	const auto isSoftShadow = true;
+	if (isSoftShadow)
+	{
+		auto sampleVecs = helperFun::sampleRay(d, 0.1, 20);
+		for(const auto & sampleVec:sampleVecs)
+		{
+			isect i;
+			if (scene->intersect(ray{ P, sampleVec }, i))
+			{
+				ret += prod(color, i.getMaterial().kt);
+			}
+			else
+			{
+				ret += color;
+			}
+		}
+		// Concurrency::parallel_for_each(sampleVecs.begin(), sampleVecs.end(),
+		//                                [&](const vec3f& sampleVec)
+		//                                {
+		// 	                               isect i;
+		// 	                               if (scene->intersect(ray{P, sampleVec}, i))
+		// 	                               {
+		// 		                               ret += prod(color, i.getMaterial().kt);
+		// 	                               }
+		// 	                               else
+		// 	                               {
+		// 		                               ret += color;
+		// 	                               }
+		//                                }
+		// );
+		ret /= 21;
+	}
+
 	return ret;
 }
 

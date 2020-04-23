@@ -14,6 +14,7 @@
 #include "fileio/parse.h"
 #include <array>
 #include <cmath>
+#include <ppl.h>
 
 #include "ui/TraceUI.h"
 extern TraceUI* traceUI;
@@ -189,16 +190,19 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 		auto reflectColor = traceRay(scene, reflectedRay, thresh
 		                             , depth + 1, materials_in);
 		auto glossyR = true;
-		if (glossyR)
+		if (glossyR && depth<max_depth)
 		{
-			auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 30);
-			for (auto& sampleVec : sampleVecs)
-			{
-				ray reflectedRay{Pos, sampleVec};
-				reflectColor += traceRay(scene, reflectedRay, thresh,
-				                         std::max(max_depth-1, depth + 1), materials_in);
-			}
-			reflectColor /= 31;
+			auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 20);
+			Concurrency::parallel_for_each(sampleVecs.begin(), sampleVecs.end(),
+			                               [&](const vec3f& sampleVec)
+			                               {
+				                               // ray reflectedRay{Pos, sampleVec};
+											   reflectColor += traceRay(scene, ray{Pos, sampleVec}, thresh,
+				                                                        std::max(max_depth - 1, depth + 1),
+				                                                        materials_in);
+			                               }
+			);
+			reflectColor /= 21;
 		}
 		reflectColor = prod(reflectColor, m.kr);
 

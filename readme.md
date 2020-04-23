@@ -50,7 +50,7 @@ BW Warn model					yes/no
 - [ ] 2B new geometry (quadrics)			
 - [ ] 2B height fields				
 - [ ]  Dof 					
-- [ ]  soft shadows, 		
+- [x]  soft shadows, 		
 - [ ]  motion blur
 - [x]  glossy reflection		
 - [ ] 3B high lever geometry (e.g. metaballs)		
