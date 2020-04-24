@@ -3,7 +3,6 @@
 
 #include "Box.h"
 
-
 bool Box::intersectLocal( const ray& r, isect& i ) const
 {
 	// YOUR CODE HERE:
@@ -24,7 +23,7 @@ bool Box::intersectLocal( const ray& r, isect& i ) const
 	i.obj = this;
 
 	// find intersection on the 6 bounding planes
-	double minT = 0;
+	double minT = 3e10;
 	for (int axis = 0; axis < 3; ++axis) {
 		double t0 = (minVertex[axis] - e[axis]) / d[axis];
 		double t1 = (maxVertex[axis] - e[axis]) / d[axis];

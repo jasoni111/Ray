@@ -486,6 +486,10 @@ TraceUI::TraceUI() {
 	m_enableCaustics->user_data((void*)(this));
 	m_enableCaustics->callback(cb_render);
 
+	m_jitter = new Fl_Light_Button(w += 110, h, 100, 25, "Jitter");
+	m_jitter->user_data((void*)(this));
+	m_jitter->callback(cb_render);
+
 	m_renderButton = new Fl_Button(240, 27, 70, 25, "&Render");
 	m_renderButton->user_data((void*)(this));
 	m_renderButton->callback(cb_render);

@@ -34,7 +34,7 @@ vec3f DirectionalLight::shadowAttenuation(const vec3f& P) const
 	{
 		ret = prod(color, i.getMaterial().kt);
 	}
-	const auto isSoftShadow = true;
+	const auto isSoftShadow = traceUI->m_softShadow->value();
 	if (isSoftShadow)
 	{
 		auto sampleVecs = helperFun::sampleRay(d, 0.05, 20);

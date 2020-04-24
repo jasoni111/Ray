@@ -18,7 +18,6 @@ vec3f Material::shade(Scene* scene, const ray& r, const isect& i) const
 	// You will need to call both distanceAttenuation() and shadowAttenuation()
 	// somewhere in your code in order to compute shadows and light falloff.
 
-
 	auto Normal = i.N;
 	auto V = r.getDirection();
 	auto P = r.at(i.t);
