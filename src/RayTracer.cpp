@@ -174,7 +174,6 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 			return phong;
 		}
 
-
 		if (!materials_in.empty())
 		{
 			if (materials_in.back().id == m.id)
@@ -183,13 +182,11 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 			}
 		}
 
-		const auto rVec =
-			(V - 2 * Normal.dot(V) * Normal).normalize();
-
+		const auto rVec = (V - 2 * Normal.dot(V) * Normal).normalize();
 		ray reflectedRay{Pos, rVec};
 		auto reflectColor = traceRay(scene, reflectedRay, thresh
 		                             , depth + 1, materials_in);
-		auto glossyR = false;
+		auto glossyR = traceUI->m_glossyReflection->value();
 		if (glossyR && depth < max_depth)
 		{
 			auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 20);
@@ -206,9 +203,7 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 		}
 		reflectColor = prod(reflectColor, m.kr);
 
-
 		vec3f refractRay{0.0, 0.0, 0.0};
-
 
 		vec3f refractColor;
 		if (m.kt.length())
@@ -222,9 +217,8 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 			ray refractionRay{Pos, refractionVec};
 			refractColor = traceRay(scene, refractionRay, thresh
 			                        , depth + 1, materials_in);
-			refractColor = prod(refractColor, m.kt);
 		}
-
+		refractColor = prod(refractColor, m.kt);
 
 		return phong + reflectColor + refractColor;
 	}
@@ -391,7 +385,7 @@ void RayTracer::tracePixel(int i, int j)
 	double x = double(i) / double(buffer_width);
 	double y = double(j) / double(buffer_height);
 
-	const auto isAdaptiveSuperRes = true;
+	const auto isAdaptiveSuperRes = traceUI->m_adaptiveSampling->value();
 	if (isAdaptiveSuperRes)
 	{
 		//adaptive
@@ -405,7 +399,7 @@ void RayTracer::tracePixel(int i, int j)
 		const auto superSampleRate = traceUI->getNumOfSupPixel();
 
 		//non adaptive
-		const auto jitter = true;
+		const auto jitter = traceUI->m_jitter->value() == 1;
 		const auto dw = 1.0 / buffer_width / superSampleRate;
 		const auto dh = 1.0 / buffer_height / superSampleRate;
 		for (auto i = 0; i < superSampleRate; ++ i)

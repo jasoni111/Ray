@@ -14,6 +14,8 @@
 #include <FL/Fl_Check_Button.H>
 #include <FL/Fl_Button.H>
 
+#include <FL/Fl_Light_Button.H>
+
 #include <FL/fl_file_chooser.H>		// FLTK file chooser
 
 #include "TraceGLWindow.h"
@@ -45,6 +47,16 @@ public:
 	Fl_Button* m_stopButton;
 
 	TraceGLWindow* m_traceGlWindow;
+
+	Fl_Light_Button* m_softShadow;
+	Fl_Light_Button* m_motionBlur;
+	Fl_Light_Button* m_glossyReflection;
+	Fl_Light_Button* m_dof;
+	Fl_Light_Button* m_adaptiveSampling;
+	Fl_Light_Button* m_adaptiveIllustrate;
+	Fl_Light_Button* m_jitter;
+	Fl_Light_Button* m_octTree;
+	Fl_Light_Button* m_enableCaustics;
 
 	// member functions
 	void show();
@@ -83,6 +95,11 @@ private:
 	static void cb_save_image(Fl_Menu_* o, void* v);
 	static void cb_exit(Fl_Menu_* o, void* v);
 	static void cb_about(Fl_Menu_* o, void* v);
+
+	static void cb_background_image(Fl_Menu_* o, void* v);
+	static void cb_texture_image(Fl_Menu_* o, void* v);
+	static void cb_normal_map(Fl_Menu_* o, void* v);
+	static void cb_hfield_map(Fl_Menu_* o, void* v);
 
 	static void cb_exit2(Fl_Widget* o, void* v);
 

@@ -3,72 +3,35 @@
 
 #include "Box.h"
 
-
 bool Box::intersectLocal( const ray& r, isect& i ) const
 {
 	// YOUR CODE HERE:
     // Add box intersection code here.
 	// it currently ignores all boxes and just returns false.
 
-	// https://www.rose-hulman.edu/class/csse/csse451/AABB/
-	// Also read the implementation in scene.cpp
+	double tMin, tMax;
 
-	vec3f e = r.getPosition();
-	vec3f d = r.getDirection();
-
-	vec3f minVertex(-0.5, -0.5, -0.5);
-	vec3f maxVertex(0.5, 0.5, 0.5);
-
-	double t[6];
+	BoundingBox box;
+	box.max = vec3f(0.5, 0.5, 0.5);
+	box.min = vec3f(-0.5, -0.5, -0.5);
+	if (!box.intersect(r, tMin, tMax))
+		return false;
+	if (tMin < RAY_EPSILON || tMax < RAY_EPSILON || abs(tMax - tMin) < RAY_EPSILON)
+		return false;
 
 	i.obj = this;
+	i.t = tMin;
 
-	// find intersection on the 6 bounding planes
-	double minT = 0;
-	for (int axis = 0; axis < 3; ++axis) {
-		double t0 = (minVertex[axis] - e[axis]) / d[axis];
-		double t1 = (maxVertex[axis] - e[axis]) / d[axis];
-
-		if (t0 > t1) {
-			t[axis * 2] = t0;
-			t[axis * 2 + 1] = t1;
-
-			if (t1 > 0 && t1 < minT) {
-				minT = t1;
-
-				vec3f N(0, 0, 0);
-				N[(axis + 1) % 3] = 1;
-				i.N = N;
-
-				i.t = t1;
-			}
-		}
-		else {
-			t[axis * 2] = t1;
-			t[axis * 2 + 1] = t0;
-
-			if (t0 > 0 && t0 < minT) {
-				minT = t0;
-
-				vec3f N(0, 0, 0);
-				N[(axis + 1) % 3] = -1;
-				i.N = N;
-
-				i.t = t0;
-			}
+	i.N = vec3f(0, 0, 0);
+	vec3f pos = r.at(tMin);
+	for (int j = 0; j < 3; ++j) {
+		if (abs(abs(pos[j]) - 0.5) < RAY_EPSILON) {
+			i.N[j] = pos[j] > 0 ? 1 : -1;
 		}
 	}
 
-	// check if closet intersection is less than the farthest intersect
-	// in the other two dimensions
-	for (int axis = 0; axis < 3; ++axis) {
-		if (t[axis * 2 + 1] > t[((axis + 1) * 2) % 6] ||
-			t[axis * 2 + 1] > t[((axis + 2) * 2) % 6]) {
-			return false;
-		}
-	}
+	if (r.getDirection() * i.N > 0)
+		i.N = -i.N;
 
 	return true;
-
-	
 }
