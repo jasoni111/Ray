@@ -54,7 +54,7 @@ BW Warn model					yes/no
 - [ ]  motion blur
 - [x]  glossy reflection		
 - [ ] 3B high lever geometry (e.g. metaballs)		
-- [ ] 3B ray-intersection optimization	(octTree)
+- [x] 3B ray-intersection optimization	(octTree)
 - [ ] 4B realistic shading model			
 
 - [ ] 4B CSG						

@@ -452,11 +452,27 @@ bool Scene::intersect(const ray& r, isect& i) const
 	bool have_one = false;
 
 	auto traverse_tree = octTree::ray_step(octTree::root.get(), r);
-
-	for (list<octTree::octree*>::const_iterator node = traverse_tree.begin(); node !=
-	     traverse_tree.end(); ++node)
+	if(traceUI->getIsOctTree() ) 
 	{
-		for (j = (*node)->Geometries.begin(); j != (*node)->Geometries.end(); ++j)
+		for (list<octTree::octree*>::const_iterator node = traverse_tree.begin(); node !=
+			traverse_tree.end(); ++node)
+		{
+			for (j = (*node)->Geometries.begin(); j != (*node)->Geometries.end(); ++j)
+			{
+				if ((*j)->intersect(r, cur))
+				{
+					if (!have_one || (cur.t < i.t))
+					{
+						i = cur;
+						have_one = true;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		for (j = boundedobjects.begin(); j != boundedobjects.end(); ++j)
 		{
 			if ((*j)->intersect(r, cur))
 			{
