@@ -354,13 +354,14 @@ void RayTracer::tracePixel(int i, int j)
 		const auto superSampleRate = traceUI->getNumOfSupPixel();
 
 		//non adaptive
+		const auto jitter = true;
 		const auto dw = 1.0 / buffer_width / superSampleRate;
 		const auto dh = 1.0 / buffer_height / superSampleRate;
 		for (auto i = 0; i < superSampleRate; ++ i)
 		{
 			for (auto j = 0; j < superSampleRate; ++j)
 			{
-				col += trace(scene, x + i * dw, y + j * dh);
+				col += trace(scene, x + i * dw + helperFun::getRand(dw)*jitter, y + j * dh + helperFun::getRand(dh) * jitter);
 			}
 		}
 		col /= superSampleRate * superSampleRate;

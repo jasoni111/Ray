@@ -29,7 +29,7 @@ BW Warn model					yes/no
 - [x] multiple light sources,
 - [x]   distance attenuation,
 - [x]   Directional lights
-- [ ]   Point lights
+- [x]   Point lights
 - [x] Shadow Attenuation	
 - [x] Reflection
 - [x] Refraction
@@ -37,7 +37,7 @@ BW Warn model					yes/no
 
 - [x] W adaptive termination				
 - [x] W antialiasing by supersampling			
-- [ ] +W jittering					
+- [x] +W jittering					
 - [ ] B spot lights					
 - [ ] B background image				
 - [ ] B accelerate shadow atteuation			
