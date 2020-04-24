@@ -3,6 +3,7 @@
 //
 // The Scene class and the geometric types that it can contain.
 //
+#define  NOMINMAX
 
 #ifndef __SCENE_H__
 #define __SCENE_H__
@@ -23,15 +24,19 @@ class Scene;
 class SceneElement
 {
 public:
-	virtual ~SceneElement() {}
+	virtual ~SceneElement()
+	{
+	}
 
-	Scene *getScene() const { return scene; }
+	Scene* getScene() const { return scene; }
 
 protected:
-	SceneElement( Scene *s )
-		: scene( s ) {}
+	SceneElement(Scene* s)
+		: scene(s)
+	{
+	}
 
-    Scene *scene;
+	Scene* scene;
 };
 
 class BoundingBox
@@ -39,12 +44,12 @@ class BoundingBox
 public:
 	vec3f min;
 	vec3f max;
-
+	
 	void operator=(const BoundingBox& target);
 
 	// Does this bounding box intersect the target?
-	bool intersects(const BoundingBox &target) const;
-	
+	bool intersects(const BoundingBox& target) const;
+
 	// does the box contain this point?
 	bool intersects(const vec3f& point) const;
 
@@ -58,76 +63,78 @@ class TransformNode
 {
 protected:
 
-    // information about this node's transformation
-    mat4f    xform;
-	mat4f    inverse;
-	mat3f    normi;
+	// information about this node's transformation
+	mat4f xform;
+	mat4f inverse;
+	mat3f normi;
 
-    // information about parent & children
-    TransformNode *parent;
-    list<TransformNode*> children;
-    
+	// information about parent & children
+	TransformNode* parent;
+	list<TransformNode*> children;
+
 public:
-   	typedef list<TransformNode*>::iterator          child_iter;
-	typedef list<TransformNode*>::const_iterator    child_citer;
+	typedef list<TransformNode*>::iterator child_iter;
+	typedef list<TransformNode*>::const_iterator child_citer;
 
-    ~TransformNode()
-    {
-        for(child_iter c = children.begin(); c != children.end(); ++c )
-            delete (*c);
-    }
+	~TransformNode()
+	{
+		for (child_iter c = children.begin(); c != children.end(); ++c)
+			delete (*c);
+	}
 
-    TransformNode *createChild(const mat4f& xform)
-    {
-        TransformNode *child = new TransformNode(this, xform);
-        children.push_back(child);
-        return child;
-    }
-    
-    // Coordinate-Space transformation
-    vec3f globalToLocalCoords(const vec3f &v)
-    {
-        return inverse * v;
-    }
+	TransformNode* createChild(const mat4f& xform)
+	{
+		TransformNode* child = new TransformNode(this, xform);
+		children.push_back(child);
+		return child;
+	}
 
-    vec3f localToGlobalCoords(const vec3f &v)
-    {
-        return xform * v;
-    }
+	// Coordinate-Space transformation
+	vec3f globalToLocalCoords(const vec3f& v)
+	{
+		return inverse * v;
+	}
 
-    vec4f localToGlobalCoords(const vec4f &v)
-    {
-        return xform * v;
-    }
+	vec3f localToGlobalCoords(const vec3f& v)
+	{
+		return xform * v;
+	}
 
-    vec3f localToGlobalCoordsNormal(const vec3f &v)
-    {
-        return (normi * v).normalize();
-    }
+	vec4f localToGlobalCoords(const vec4f& v)
+	{
+		return xform * v;
+	}
+
+	vec3f localToGlobalCoordsNormal(const vec3f& v)
+	{
+		return (normi * v).normalize();
+	}
 
 protected:
-    // protected so that users can't directly construct one of these...
-    // force them to use the createChild() method.  Note that they CAN
-    // directly create a TransformRoot object.
-    TransformNode(TransformNode *parent, const mat4f& xform )
-        : children()
-    {
-        this->parent = parent;
-        if (parent == NULL)
-            this->xform = xform;
-        else
-            this->xform = parent->xform * xform;
-        
-        inverse = this->xform.inverse();
-        normi = this->xform.upper33().inverse().transpose();
-    }
+	// protected so that users can't directly construct one of these...
+	// force them to use the createChild() method.  Note that they CAN
+	// directly create a TransformRoot object.
+	TransformNode(TransformNode* parent, const mat4f& xform)
+		: children()
+	{
+		this->parent = parent;
+		if (parent == NULL)
+			this->xform = xform;
+		else
+			this->xform = parent->xform * xform;
+
+		inverse = this->xform.inverse();
+		normi = this->xform.upper33().inverse().transpose();
+	}
 };
 
 class TransformRoot : public TransformNode
 {
 public:
-    TransformRoot()
-        : TransformNode(NULL, mat4f()) {}
+	TransformRoot()
+		: TransformNode(NULL, mat4f())
+	{
+	}
 };
 
 // A Geometry object is anything that has extent in three dimensions.
@@ -137,69 +144,72 @@ class Geometry
 	: public SceneElement
 {
 public:
-    // intersections performed in the global coordinate space.
-    virtual bool intersect(const ray&r, isect&i) const;
-    
-    // intersections performed in the object's local coordinate space
-    // do not call directly - this should only be called by intersect()
-	virtual bool intersectLocal( const ray& r, isect& i ) const;
+	// intersections performed in the global coordinate space.
+	virtual bool intersect(const ray& r, isect& i) const;
+
+	// intersections performed in the object's local coordinate space
+	// do not call directly - this should only be called by intersect()
+	virtual bool intersectLocal(const ray& r, isect& i) const;
 
 
 	virtual bool hasBoundingBoxCapability() const;
 	const BoundingBox& getBoundingBox() const { return bounds; }
-	virtual void ComputeBoundingBox()
-    {
-        // take the object's local bounding box, transform all 8 points on it,
-        // and use those to find a new bounding box.
 
-        BoundingBox localBounds = ComputeLocalBoundingBox();
-        
-        vec3f min = localBounds.min;
+	virtual void ComputeBoundingBox()
+	{
+		// take the object's local bounding box, transform all 8 points on it,
+		// and use those to find a new bounding box.
+
+		BoundingBox localBounds = ComputeLocalBoundingBox();
+
+		vec3f min = localBounds.min;
 		vec3f max = localBounds.max;
 
 		vec4f v, newMax, newMin;
 
-		v = transform->localToGlobalCoords( vec4f(min[0], min[1], min[2], 1) );
+		v = transform->localToGlobalCoords(vec4f(min[0], min[1], min[2], 1));
 		newMax = v;
 		newMin = v;
-		v = transform->localToGlobalCoords( vec4f(max[0], min[1], min[2], 1) );
+		v = transform->localToGlobalCoords(vec4f(max[0], min[1], min[2], 1));
 		newMax = maximum(newMax, v);
 		newMin = minimum(newMin, v);
-		v = transform->localToGlobalCoords( vec4f(min[0], max[1], min[2], 1) );
+		v = transform->localToGlobalCoords(vec4f(min[0], max[1], min[2], 1));
 		newMax = maximum(newMax, v);
 		newMin = minimum(newMin, v);
-		v = transform->localToGlobalCoords( vec4f(max[0], max[1], min[2], 1) );
+		v = transform->localToGlobalCoords(vec4f(max[0], max[1], min[2], 1));
 		newMax = maximum(newMax, v);
 		newMin = minimum(newMin, v);
-		v = transform->localToGlobalCoords( vec4f(min[0], min[1], max[2], 1) );
+		v = transform->localToGlobalCoords(vec4f(min[0], min[1], max[2], 1));
 		newMax = maximum(newMax, v);
 		newMin = minimum(newMin, v);
-		v = transform->localToGlobalCoords( vec4f(max[0], min[1], max[2], 1) );
+		v = transform->localToGlobalCoords(vec4f(max[0], min[1], max[2], 1));
 		newMax = maximum(newMax, v);
 		newMin = minimum(newMin, v);
-		v = transform->localToGlobalCoords( vec4f(min[0], max[1], max[2], 1) );
+		v = transform->localToGlobalCoords(vec4f(min[0], max[1], max[2], 1));
 		newMax = maximum(newMax, v);
 		newMin = minimum(newMin, v);
-		v = transform->localToGlobalCoords( vec4f(max[0], max[1], max[2], 1) );
+		v = transform->localToGlobalCoords(vec4f(max[0], max[1], max[2], 1));
 		newMax = maximum(newMax, v);
 		newMin = minimum(newMin, v);
-		
+
 		bounds.max = vec3f(newMax);
 		bounds.min = vec3f(newMin);
-    }
+	}
 
-    // default method for ComputeLocalBoundingBox returns a bogus bounding box;
-    // this should be overridden if hasBoundingBoxCapability() is true.
-    virtual BoundingBox ComputeLocalBoundingBox() { return BoundingBox(); }
+	// default method for ComputeLocalBoundingBox returns a bogus bounding box;
+	// this should be overridden if hasBoundingBoxCapability() is true.
+	virtual BoundingBox ComputeLocalBoundingBox() { return BoundingBox(); }
 
-    void setTransform(TransformNode *transform) { this->transform = transform; };
-    
-	Geometry( Scene *scene ) 
-		: SceneElement( scene ) {}
+	void setTransform(TransformNode* transform) { this->transform = transform; };
+
+	Geometry(Scene* scene)
+		: SceneElement(scene)
+	{
+	}
 
 protected:
 	BoundingBox bounds;
-    TransformNode *transform;
+	TransformNode* transform;
 };
 
 // A SceneObject is a real actual thing that we want to model in the 
@@ -211,11 +221,13 @@ class SceneObject
 {
 public:
 	virtual const Material& getMaterial() const = 0;
-	virtual void setMaterial( Material *m ) = 0;
+	virtual void setMaterial(Material *m) = 0;
 	bool isBox = false;
 protected:
-	SceneObject( Scene *scene )
-		: Geometry( scene ) {}
+	SceneObject(Scene* scene)
+		: Geometry(scene)
+	{
+	}
 };
 
 // A simple extension of SceneObject that adds an instance of Material
@@ -224,63 +236,110 @@ class MaterialSceneObject
 	: public SceneObject
 {
 public:
-	virtual ~MaterialSceneObject() { if( material ) delete material; }
+	virtual ~MaterialSceneObject() { if (material) delete material; }
 
 	virtual const Material& getMaterial() const { return *material; }
-	virtual void setMaterial( Material *m )	{ material = m; }
+	virtual void setMaterial(Material* m) { material = m; }
 
 protected:
-	MaterialSceneObject( Scene *scene, Material *mat ) 
-		: SceneObject( scene ), material( mat ) {}
-    //	MaterialSceneObject( Scene *scene ) 
+	MaterialSceneObject(Scene* scene, Material* mat)
+		: SceneObject(scene), material(mat)
+	{
+	}
+
+	//	MaterialSceneObject( Scene *scene ) 
 	//	: SceneObject( scene ), material( new Material ) {}
 
-	Material *material;
+	Material* material;
 };
 
 class Scene
 {
 public:
-	typedef list<Light*>::iterator 			liter;
-	typedef list<Light*>::const_iterator 	cliter;
+	typedef list<Light*>::iterator liter;
+	typedef list<Light*>::const_iterator cliter;
 
-	typedef list<Geometry*>::iterator 		giter;
+	typedef list<Geometry*>::iterator giter;
 	typedef list<Geometry*>::const_iterator cgiter;
 
-    TransformRoot transformRoot;
+	TransformRoot transformRoot;
 
 public:
-	Scene() 
-		: transformRoot(), objects(), lights() {}
+	Scene()
+		: transformRoot(), objects(), lights()
+	{
+	}
+
 	virtual ~Scene();
 
-	void add( Geometry* obj )
+	void add(Geometry* obj)
 	{
 		obj->ComputeBoundingBox();
-		objects.push_back( obj );
+		objects.push_back(obj);
 	}
-	void add( Light* light )
-	{ lights.push_back( light ); }
 
-	bool intersect( const ray& r, isect& i ) const;
+	void add(Light* light)
+	{
+		lights.push_back(light);
+	}
+
+	bool intersect(const ray& r, isect& i) const;
 	void initScene();
 
 	list<Light*>::const_iterator beginLights() const { return lights.begin(); }
 	list<Light*>::const_iterator endLights() const { return lights.end(); }
-        
-	Camera *getCamera() { return &camera; }
+
+	Camera* getCamera() { return &camera; }
 
 private:
-    list<Geometry*> objects;
+	list<Geometry*> objects;
 	list<Geometry*> nonboundedobjects;
 	list<Geometry*> boundedobjects;
-    list<Light*> lights;
-    Camera camera;
-	
+	list<Light*> lights;
+	Camera camera;
+
 	// Each object in the scene, provided that it has hasBoundingBoxCapability(),
 	// must fall within this bounding box.  Objects that don't have hasBoundingBoxCapability()
 	// are exempt from this requirement.
 	BoundingBox sceneBounds;
 };
+
+
+namespace octTree
+{
+	class octree
+	{
+	public:
+
+
+		static void insert(octree* cur_ptr, Geometry* const& obj);
+		void split();
+
+		// vec3f min;
+		// vec3f max;
+		bool isLeaf;
+		std::unique_ptr<octree> child[8];
+		std::list<Geometry*> Geometries;
+		BoundingBox bound;
+
+		octree(vec3f _min, vec3f _max) : isLeaf(true)
+		{
+			bound.min = _min;
+			bound.max = _max;
+		}
+
+		octree(float _minx, float _miny, float _minz,
+		       float _maxx, float _maxy, float _maxz)
+			: isLeaf(true)
+		{
+			bound.min = vec3f{ _minx,_miny,_minz };
+			bound.max = vec3f{ _maxx,_maxy,_maxz };
+			// , min(vec3f{ _minx, _miny, _minz }),
+			// 	max(vec3f{ _maxx, _maxy, _maxz })
+		}
+		
+	};
+}
+
 
 #endif // __SCENE_H__

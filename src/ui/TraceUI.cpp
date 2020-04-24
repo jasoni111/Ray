@@ -277,6 +277,11 @@ const double & TraceUI::getNumOfSupPixel() const
 	return this->m_nNumOfSupPixel;
 }
 
+char TraceUI::getIsOctTree() const
+{
+	return this->m_octTree->value();
+}
+
 const double& TraceUI::getThreshold() const
 {
 	return this->m_nThreshold;
@@ -471,7 +476,8 @@ TraceUI::TraceUI() {
 	m_softShadow = new Fl_Light_Button(w, h += 25, 100, 25, "Soft Shadow");
 	m_softShadow->user_data((void*)(this));
 	m_softShadow->callback(cb_render);
-
+	m_softShadow->value(true);
+	
 	m_motionBlur = new Fl_Light_Button(w += 110, h, 100, 25, "Motion Blur");
 	m_motionBlur->user_data((void*)(this));
 	m_motionBlur->callback(cb_render);
@@ -488,6 +494,7 @@ TraceUI::TraceUI() {
 	m_adaptiveSampling = new Fl_Light_Button(w += 110, h, 100, 25, "Adapt. Sampl.");
 	m_adaptiveSampling->user_data((void*)(this));
 	m_adaptiveSampling->callback(cb_render);
+	m_adaptiveSampling->value(true);
 
 	m_adaptiveIllustrate = new Fl_Light_Button(w += 110, h, 100, 25, "Adapt. Illust.");
 	m_adaptiveIllustrate->user_data((void*)(this));
@@ -497,6 +504,7 @@ TraceUI::TraceUI() {
 	m_octTree = new Fl_Light_Button(w, h += 30, 100, 25, "OctTree");
 	m_octTree->user_data((void*)(this));
 	m_octTree->callback(cb_render);
+	m_octTree->value(true);
 
 	m_enableCaustics = new Fl_Light_Button(w += 110, h, 100, 25, "Enable Caustics");
 	m_enableCaustics->user_data((void*)(this));

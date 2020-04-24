@@ -381,7 +381,6 @@ vec3f RayTracer::adaptiveTracePixel(const double& i, const double& j, const doub
 		toReturn += adaptiveTracePixel(i + dw / 4.f, j - dh / 4.f, dw / 2.f, dh / 2.f, depth + 1);
 		++num_trace;
 	}
-	// if (isAdaptiveIllustrate && total != 1)toReturn = vec3f(0, 0, 1);
 	// toReturn = vec3f(1, 1, 1);
 	return toReturn / num_trace;
 }

@@ -75,6 +75,7 @@ public:
 	const double& getAttenConst() const;
 	const double& getAttenLinear() const;
 	const double& getAttenQuad() const;
+	char getIsOctTree() const;
 
 private:
 	RayTracer* raytracer;
