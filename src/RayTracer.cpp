@@ -190,14 +190,14 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 		auto reflectColor = traceRay(scene, reflectedRay, thresh
 		                             , depth + 1, materials_in);
 		auto glossyR = false;
-		if (glossyR && depth<max_depth)
+		if (glossyR && depth < max_depth)
 		{
 			auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 20);
 			Concurrency::parallel_for_each(sampleVecs.begin(), sampleVecs.end(),
 			                               [&](const vec3f& sampleVec)
 			                               {
 				                               // ray reflectedRay{Pos, sampleVec};
-											   reflectColor += traceRay(scene, ray{Pos, sampleVec}, thresh,
+				                               reflectColor += traceRay(scene, ray{Pos, sampleVec}, thresh,
 				                                                        std::max(max_depth - 1, depth + 1),
 				                                                        materials_in);
 			                               }
@@ -331,6 +331,57 @@ void RayTracer::traceLines(int start, int stop)
 }
 
 
+vec3f RayTracer::adaptiveTracePixel(const double& i, const double& j, const double& dw, const double& dh, int depth)
+{
+	if (depth >= 5)
+	{
+		return trace(scene, i, j);
+	}
+
+	double x0 = i - dw / 2.f, x1 = i + dw / 2.f;
+	double y0 = j - dh / 2.f, y1 = j + dh / 2.f;
+	vec3f c00;
+	vec3f c01;
+	vec3f c10;
+	vec3f c11;
+	vec3f c;
+	Concurrency::parallel_invoke(
+		[&] { c00 = trace(scene, x0, y0); },
+		[&] { c01 = trace(scene, x0, y1); },
+		[&] { c10 = trace(scene, x1, y0); },
+		[&] { c11 = trace(scene, x1, y1); },
+		[&] { c = trace(scene, i, j); }
+	);
+	vec3f toReturn = c;
+
+	auto num_trace = 1;
+
+	if ((c00 - c).length() > 0.05)
+	{
+		toReturn += adaptiveTracePixel(i - dw / 4.f, j - dh / 4.f, dw / 2.f, dh / 2.f, depth + 1);
+		++num_trace;
+	}
+	if ((c01 - c).length() > 0.05)
+	{
+		toReturn += adaptiveTracePixel(i - dw / 4.f, j + dh / 4.f, dw / 2.f, dh / 2.f, depth + 1);
+		++num_trace;
+	}
+	if ((c11 - c).length() > 0.05)
+	{
+		toReturn += adaptiveTracePixel(i + dw / 4.f, j + dh / 4.f, dw / 2.f, dh / 2.f, depth + 1);
+		++num_trace;
+	}
+	if ((c10 - c).length() > 0.05)
+	{
+		toReturn += adaptiveTracePixel(i + dw / 4.f, j - dh / 4.f, dw / 2.f, dh / 2.f, depth + 1);
+		++num_trace;
+	}
+	// if (isAdaptiveIllustrate && total != 1)toReturn = vec3f(0, 0, 1);
+	// toReturn = vec3f(1, 1, 1);
+	return toReturn / num_trace;
+}
+
+
 void RayTracer::tracePixel(int i, int j)
 {
 	vec3f col;
@@ -341,10 +392,11 @@ void RayTracer::tracePixel(int i, int j)
 	double x = double(i) / double(buffer_width);
 	double y = double(j) / double(buffer_height);
 
-	const auto isAdaptiveSuperRes = false;
+	const auto isAdaptiveSuperRes = true;
 	if (isAdaptiveSuperRes)
 	{
 		//adaptive
+		col = this->adaptiveTracePixel(x, y, 1.0 / buffer_width, 1.0 / buffer_height, 0);
 	}
 	else
 	{
@@ -361,7 +413,8 @@ void RayTracer::tracePixel(int i, int j)
 		{
 			for (auto j = 0; j < superSampleRate; ++j)
 			{
-				col += trace(scene, x + i * dw + helperFun::getRand(dw)*jitter, y + j * dh + helperFun::getRand(dh) * jitter);
+				col += trace(scene, x + i * dw + helperFun::getRand(dw) * jitter,
+				             y + j * dh + helperFun::getRand(dh) * jitter);
 			}
 		}
 		col /= superSampleRate * superSampleRate;

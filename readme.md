@@ -43,7 +43,7 @@ BW Warn model					yes/no
 - [ ] B accelerate shadow atteuation			
 - [x] B overlapping tranparent objects		
 - [ ] BW texture mapping (diffuse and transparent)	
-- [ ] BW antialiasing by adaptive supersampling	
+- [x] BW antialiasing by adaptive supersampling	
 - [ ] BW Warn model					
 - [ ] 2B bump mapping					
 - [ ] 2B solid/procedural texture			
