@@ -1,27 +1,35 @@
 \HKUST login(s): zljieong, mcyim
+
 ```
-W adaptive termination				yes/no
-W antialiasing by supersampling			yes/no
-+W jittering					yes/no
-B spot lights					yes/no
-B background image				yes/no
-B accelerate shadow atteuation			yes/no
-B overlapping tranparent objects		yes/no
-BW texture mapping (diffuse and transparent)	yes/no
-BW antialiasing by adaptive supersampling	yes/no
-BW Warn model					yes/no
-2B bump mapping					yes/no
-2B solid/procedural texture			yes/no
-2B new geometry (quadrics)			yes/no
-2B height fields				yes/no
-2B first 					yes/no
-1W next for each Dof, soft shadows, 		yes/no
-   motion blur, glossy reflection		yes/no
-3B high lever geometry (e.g. metaballs)		yes/no
-3B ray-intersection optimization		yes/no
-4B realistic shading model			yes/no
-4B CSG						yes/no
-4B caustics					yes/no
+For image plz go to Out folder.
+```
+
+
+```
+W adaptive termination				yes
+W antialiasing by supersampling			yes
++W jittering					yes
+B spot lights					no
+B background image				no
+B accelerate shadow atteuation			no
+B overlapping tranparent objects		yes
+BW texture mapping (diffuse and transparent)	yes
+BW antialiasing by adaptive supersampling	yes
+BW Warn model					no
+2B bump mapping					no
+2B solid/procedural texture			no
+2B new geometry (quadrics)			no
+2B height fields				no
+2B first 					no
+1W next for each Dof, no
+   soft shadows, 		yes
+   motion blur, no
+   glossy reflection		yes
+3B high lever geometry (e.g. metaballs)		no
+3B ray-intersection optimization		yes
+4B realistic shading model			no
+4B CSG						no
+4B caustics					no
 ```
 # Basic
 - [x] Box Intersection
@@ -42,7 +50,7 @@ BW Warn model					yes/no
 - [ ] B background image				
 - [ ] B accelerate shadow atteuation			
 - [x] B overlapping tranparent objects		
-- [x] BW texture mapping (diffuse and transparent)	
+- [x] BW texture mapping (diffuse and transparent)	for box only
 - [x] BW antialiasing by adaptive supersampling	
 - [ ] BW Warn model					
 - [ ] 2B bump mapping					
