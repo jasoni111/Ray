@@ -10,6 +10,7 @@ public:
 	Box( Scene *scene, Material *mat )
 		: MaterialSceneObject( scene, mat )
 	{
+		isBox = true;
 	}
 
 	virtual bool intersectLocal( const ray& r, isect& i ) const;

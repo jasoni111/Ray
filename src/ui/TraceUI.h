@@ -58,6 +58,11 @@ public:
 	Fl_Light_Button* m_octTree;
 	Fl_Light_Button* m_enableCaustics;
 
+	Fl_Light_Button* m_boxEmissionTexture;
+	Fl_Light_Button* m_boxDiffuseTexture;
+	Fl_Light_Button* m_boxSpecularTexture;
+	Fl_Light_Button* m_boxOpacity;
+
 	// member functions
 	void show();
 
@@ -96,10 +101,10 @@ private:
 	static void cb_exit(Fl_Menu_* o, void* v);
 	static void cb_about(Fl_Menu_* o, void* v);
 
-	static void cb_background_image(Fl_Menu_* o, void* v);
-	static void cb_texture_image(Fl_Menu_* o, void* v);
-	static void cb_normal_map(Fl_Menu_* o, void* v);
-	static void cb_hfield_map(Fl_Menu_* o, void* v);
+	static void cb_emission_image(Fl_Menu_* o, void* v);
+	static void cb_diffuse_image(Fl_Menu_* o, void* v);
+	static void cb_specular_image(Fl_Menu_* o, void* v);
+	static void cb_opacity_image(Fl_Menu_* o, void* v);
 
 	static void cb_exit2(Fl_Widget* o, void* v);
 

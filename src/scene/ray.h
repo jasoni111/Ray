@@ -64,6 +64,8 @@ public:
             obj = other.obj;
             t = other.t;
             N = other.N;
+            i_box_x = other.i_box_x;
+            i_box_y = other.i_box_y;
 //            material = other.material ? new Material( *(other.material) ) : 0;
 			if( other.material )
             {
@@ -87,6 +89,9 @@ public:
     Material *material;         // if this intersection has its own material
                                 // (as opposed to one in its associated object)
                                 // as in the case where the material was interpolated
+
+    // intersection on box plane, range[0, 1]
+    double i_box_x, i_box_y;
 
     const Material &getMaterial() const;
     // Other info here.

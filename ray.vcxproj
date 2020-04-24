@@ -274,6 +274,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\RayTracer.h" />
@@ -294,6 +295,7 @@
     <ClInclude Include="src\SceneObjects\Sphere.h" />
     <ClInclude Include="src\SceneObjects\Square.h" />
     <ClInclude Include="src\SceneObjects\trimesh.h" />
+    <ClInclude Include="texture.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Makefile" />

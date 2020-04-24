@@ -167,7 +167,18 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 		const auto Pos = r.at(i.t);
 
 		const Material& m = i.getMaterial();
-		const auto phong = m.shade(scene, r, i);
+
+		bool use_diffuseMap = i.obj->isBox && traceUI->m_boxDiffuseTexture->value();
+		bool use_emissionMap = i.obj->isBox && traceUI->m_boxEmissionTexture->value();
+		bool use_opacityMap = i.obj->isBox && traceUI->m_boxOpacity->value();
+		bool use_specularMap = i.obj->isBox && traceUI->m_boxSpecularTexture->value();
+
+		const auto phong = m.shade(scene, r, i, 
+			use_diffuseMap, diffuseMap.getColor(i.i_box_x, i.i_box_y),
+			use_emissionMap, emissionMap.getColor(i.i_box_x, i.i_box_y), 
+			use_opacityMap, opacityMap.getColor(i.i_box_x, i.i_box_y),
+			use_specularMap, specularMap.getColor(i.i_box_x, i.i_box_y)
+			);
 
 		if (traceUI->getThreshold() > phong.length())
 		{

@@ -33,8 +33,8 @@ BW Warn model					yes/no
 - [x] Shadow Attenuation	
 - [x] Reflection
 - [x] Refraction
-# Extra:
 
+# Extra:
 - [x] W adaptive termination				
 - [x] W antialiasing by supersampling			
 - [x] +W jittering					
@@ -42,7 +42,7 @@ BW Warn model					yes/no
 - [ ] B background image				
 - [ ] B accelerate shadow atteuation			
 - [x] B overlapping tranparent objects		
-- [ ] BW texture mapping (diffuse and transparent)	
+- [x] BW texture mapping (diffuse and transparent)	
 - [x] BW antialiasing by adaptive supersampling	
 - [ ] BW Warn model					
 - [ ] 2B bump mapping					

@@ -62,24 +62,40 @@ void TraceUI::cb_exit(Fl_Menu_* o, void* v)
 	pUI->m_mainWindow->hide();
 }
 
-void TraceUI::cb_background_image(Fl_Menu_* o, void* v)
+void TraceUI::cb_emission_image(Fl_Menu_* o, void* v)
 {
 	TraceUI* pUI = whoami(o);
+	char* newfile = fl_file_chooser("Open emission bmp?", "*.bmp", nullptr);
+	if (newfile != nullptr) {
+		pUI->raytracer->emissionMap.loadMap(newfile);
+	}
 }
 
-void TraceUI::cb_texture_image(Fl_Menu_* o, void* v)
+void TraceUI::cb_diffuse_image(Fl_Menu_* o, void* v)
 {
 	TraceUI* pUI = whoami(o);
+	char* newfile = fl_file_chooser("Open diffuse bmp?", "*.bmp", nullptr);
+	if (newfile != nullptr) {
+		pUI->raytracer->diffuseMap.loadMap(newfile);
+	}
 }
 
-void TraceUI::cb_normal_map(Fl_Menu_* o, void* v)
+void TraceUI::cb_specular_image(Fl_Menu_* o, void* v)
 {
 	TraceUI* pUI = whoami(o);
+	char* newfile = fl_file_chooser("Open specular bmp?", "*.bmp", nullptr);
+	if (newfile != nullptr) {
+		pUI->raytracer->specularMap.loadMap(newfile);
+	}
 }
 
-void TraceUI::cb_hfield_map(Fl_Menu_* o, void* v)
+void TraceUI::cb_opacity_image(Fl_Menu_* o, void* v)
 {
 	TraceUI* pUI = whoami(o);
+	char* newfile = fl_file_chooser("Open opacity bmp?", "*.bmp", nullptr);
+	if (newfile != nullptr) {
+		pUI->raytracer->opacityMap.loadMap(newfile);
+	}
 }
 
 void TraceUI::cb_exit2(Fl_Widget* o, void* v) 
@@ -285,10 +301,10 @@ Fl_Menu_Item TraceUI::menuitems[] = {
 	{ "&File",		0, 0, 0, FL_SUBMENU },
 		{ "&Load Scene...",	FL_ALT + 'l', (Fl_Callback *)TraceUI::cb_load_scene },
 		{ "&Save Image...",	FL_ALT + 's', (Fl_Callback *)TraceUI::cb_save_image },
-		{ "&Load Background Image...",	FL_ALT + 'm', (Fl_Callback*)TraceUI::cb_load_scene },
-		{ "&Load Texture Image...",	FL_ALT + 't', (Fl_Callback*)TraceUI::cb_load_scene },
-		{ "&Load Normal Map...",	FL_ALT + 'm', (Fl_Callback*)TraceUI::cb_load_scene },
-		{ "&Load HField Map...",	FL_ALT + 'h', (Fl_Callback*)TraceUI::cb_load_scene },
+		{ "&Load Emission Image...",	FL_ALT + 'm', (Fl_Callback*)TraceUI::cb_emission_image },
+		{ "&Load Diffuse Image...",	FL_ALT + 't', (Fl_Callback*)TraceUI::cb_diffuse_image },
+		{ "&Load Specular Image...",	FL_ALT + 'm', (Fl_Callback*)TraceUI::cb_specular_image },
+		{ "&Load Opacity Image...",	FL_ALT + 'h', (Fl_Callback*)TraceUI::cb_opacity_image },
 		{ "&Exit",			FL_ALT + 'e', (Fl_Callback *)TraceUI::cb_exit },
 		{ 0 },
 
@@ -489,6 +505,24 @@ TraceUI::TraceUI() {
 	m_jitter = new Fl_Light_Button(w += 110, h, 100, 25, "Jitter");
 	m_jitter->user_data((void*)(this));
 	m_jitter->callback(cb_render);
+
+	w = 10;
+	m_boxEmissionTexture = new Fl_Light_Button(w, h += 30, 160, 25, "Box Emission Texture");
+	m_boxEmissionTexture->user_data((void*)(this));
+	m_boxEmissionTexture->callback(cb_render);
+
+	m_boxDiffuseTexture = new Fl_Light_Button(w += 170, h, 150, 25, "Box Diffuse Texture");
+	m_boxDiffuseTexture->user_data((void*)(this));
+	m_boxDiffuseTexture->callback(cb_render);
+
+	w = 10;
+	m_boxSpecularTexture = new Fl_Light_Button(w, h += 30, 160, 25, "Box Specular Texture");
+	m_boxSpecularTexture->user_data((void*)(this));
+	m_boxSpecularTexture->callback(cb_render);
+
+	m_boxOpacity = new Fl_Light_Button(w += 170, h, 150, 25, "Box Opacity");
+	m_boxOpacity->user_data((void*)(this));
+	m_boxOpacity->callback(cb_render);
 
 	m_renderButton = new Fl_Button(240, 27, 70, 25, "&Render");
 	m_renderButton->user_data((void*)(this));

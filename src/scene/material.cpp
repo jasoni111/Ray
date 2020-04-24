@@ -4,7 +4,12 @@
 
 // Apply the phong model to this point on the surface of the object, returning
 // the color of that point.
-vec3f Material::shade(Scene* scene, const ray& r, const isect& i) const
+vec3f Material::shade(Scene* scene, const ray& r, const isect& i,
+	bool& use_diffuseMap, const vec3f& diffuse_color,
+	bool& use_emissionMap, const vec3f& emission_color,
+	bool& use_opacityMap, const vec3f& opacity_color,
+	bool& use_specularMap, const vec3f specular_color
+) const
 {
 	// YOUR CODE HERE
 
@@ -27,6 +32,14 @@ vec3f Material::shade(Scene* scene, const ray& r, const isect& i) const
 	auto specularColor = ks;
 	auto opacity = vec3f{1.0, 1.0, 1.0} - kt;
 
+	if (use_diffuseMap)
+		diffuseColor = diffuse_color;
+	if (use_emissionMap)
+		emissionColor = emission_color;
+	if (use_opacityMap)
+		opacity = opacity_color;
+	if (use_specularMap)
+		specularColor = specular_color;
 
 	const vec3f ambientLight{0, 0, 0};
 	// auto color = emissionColor + prod(ka, scene->ambientLight);

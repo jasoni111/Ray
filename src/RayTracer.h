@@ -8,6 +8,8 @@
 #include "scene/scene.h"
 #include "scene/ray.h"
 
+#include "../texture.h"
+
 class RayTracer
 {
 public:
@@ -33,6 +35,11 @@ public:
 	ray reflectDirection(const ray& rDirect, const isect& i);
 
 	int max_depth = 10;
+
+	Texture diffuseMap;
+	Texture emissionMap;
+	Texture specularMap;
+	Texture opacityMap;
 
 private:
 	unsigned char *buffer;

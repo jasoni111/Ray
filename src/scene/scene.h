@@ -212,7 +212,7 @@ class SceneObject
 public:
 	virtual const Material& getMaterial() const = 0;
 	virtual void setMaterial( Material *m ) = 0;
-
+	bool isBox = false;
 protected:
 	SceneObject( Scene *scene )
 		: Geometry( scene ) {}
@@ -269,8 +269,6 @@ public:
 	list<Light*>::const_iterator endLights() const { return lights.end(); }
         
 	Camera *getCamera() { return &camera; }
-
-	
 
 private:
     list<Geometry*> objects;
