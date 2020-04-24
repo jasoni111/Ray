@@ -412,8 +412,6 @@ TraceUI::TraceUI() {
 	m_thresholdSlide->align(FL_ALIGN_RIGHT);
 	m_thresholdSlide->callback(cb_thresholdSlides);
 
-	h += 25;
-
 	// install slider Number of sup-pixels
 	m_numOfSupPixel = new Fl_Value_Slider(10, h += 25, 180, 20, "Number of sup-pixels");
 	m_numOfSupPixel->user_data((void*)(this));	// record self to be used by static callback functions
@@ -426,9 +424,6 @@ TraceUI::TraceUI() {
 	m_numOfSupPixel->value(m_nNumOfSupPixel);
 	m_numOfSupPixel->align(FL_ALIGN_RIGHT);
 	m_numOfSupPixel->callback(cb_numOfSupPixelSlides);
-
-	h += 25;
-	h += 25;
 
 	// install slider Focal Length
 	m_focalLength = new Fl_Value_Slider(10, h += 25, 180, 20, "Focal Length");
@@ -455,6 +450,41 @@ TraceUI::TraceUI() {
 	m_apertureSize->value(m_nApertureSize);
 	m_apertureSize->align(FL_ALIGN_RIGHT);
 	m_apertureSize->callback(cb_apertureSizeSlides);
+
+	int w = 10;
+	m_softShadow = new Fl_Light_Button(w, h += 25, 100, 25, "Soft Shadow");
+	m_softShadow->user_data((void*)(this));
+	m_softShadow->callback(cb_render);
+
+	m_motionBlur = new Fl_Light_Button(w += 110, h, 100, 25, "Motion Blur");
+	m_motionBlur->user_data((void*)(this));
+	m_motionBlur->callback(cb_render);
+
+	m_glossyReflection = new Fl_Light_Button(w += 110, h, 100, 25, "Glossy Reflect.");
+	m_glossyReflection->user_data((void*)(this));
+	m_glossyReflection->callback(cb_render);
+
+	w = 10;
+	m_dof = new Fl_Light_Button(w, h += 30, 100, 25, "DOF.");
+	m_dof->user_data((void*)(this));
+	m_dof->callback(cb_render);
+
+	m_adaptiveSampling = new Fl_Light_Button(w += 110, h, 100, 25, "Adapt. Sampl.");
+	m_adaptiveSampling->user_data((void*)(this));
+	m_adaptiveSampling->callback(cb_render);
+
+	m_adaptiveIllustrate = new Fl_Light_Button(w += 110, h, 100, 25, "Adapt. Illust.");
+	m_adaptiveIllustrate->user_data((void*)(this));
+	m_adaptiveIllustrate->callback(cb_render);
+
+	w = 10;
+	m_octTree = new Fl_Light_Button(w, h += 30, 100, 25, "OctTree");
+	m_octTree->user_data((void*)(this));
+	m_octTree->callback(cb_render);
+
+	m_enableCaustics = new Fl_Light_Button(w += 110, h, 100, 25, "Enable Caustics");
+	m_enableCaustics->user_data((void*)(this));
+	m_enableCaustics->callback(cb_render);
 
 	m_renderButton = new Fl_Button(240, 27, 70, 25, "&Render");
 	m_renderButton->user_data((void*)(this));
