@@ -21,6 +21,9 @@ public:
 	double aspectRatio();
 	void traceSetup( int w, int h );
 	void traceLines( int start = 0, int stop = 10000000 );
+	
+	vec3f adaptiveTracePixel(const double & i, const double &j, const double &dw, const double &dh, int depth);
+	
 	void tracePixel( int i, int j );
 
 	bool loadScene( char* fn );
