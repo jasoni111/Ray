@@ -302,7 +302,7 @@ Fl_Menu_Item TraceUI::menuitems[] = {
 TraceUI::TraceUI() {
 	// init.
 	m_nDepth = 0;
-	m_nSize = 150;
+	m_nSize = 512;
 
 	m_nAttenConstant = 0;
 	m_nAttenLinear = 0;
