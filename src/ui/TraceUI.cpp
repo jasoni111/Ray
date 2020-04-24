@@ -62,6 +62,26 @@ void TraceUI::cb_exit(Fl_Menu_* o, void* v)
 	pUI->m_mainWindow->hide();
 }
 
+void TraceUI::cb_background_image(Fl_Menu_* o, void* v)
+{
+	TraceUI* pUI = whoami(o);
+}
+
+void TraceUI::cb_texture_image(Fl_Menu_* o, void* v)
+{
+	TraceUI* pUI = whoami(o);
+}
+
+void TraceUI::cb_normal_map(Fl_Menu_* o, void* v)
+{
+	TraceUI* pUI = whoami(o);
+}
+
+void TraceUI::cb_hfield_map(Fl_Menu_* o, void* v)
+{
+	TraceUI* pUI = whoami(o);
+}
+
 void TraceUI::cb_exit2(Fl_Widget* o, void* v) 
 {
 	TraceUI* pUI=(TraceUI *)(o->user_data());
@@ -265,6 +285,10 @@ Fl_Menu_Item TraceUI::menuitems[] = {
 	{ "&File",		0, 0, 0, FL_SUBMENU },
 		{ "&Load Scene...",	FL_ALT + 'l', (Fl_Callback *)TraceUI::cb_load_scene },
 		{ "&Save Image...",	FL_ALT + 's', (Fl_Callback *)TraceUI::cb_save_image },
+		{ "&Load Background Image...",	FL_ALT + 'm', (Fl_Callback*)TraceUI::cb_load_scene },
+		{ "&Load Texture Image...",	FL_ALT + 't', (Fl_Callback*)TraceUI::cb_load_scene },
+		{ "&Load Normal Map...",	FL_ALT + 'm', (Fl_Callback*)TraceUI::cb_load_scene },
+		{ "&Load HField Map...",	FL_ALT + 'h', (Fl_Callback*)TraceUI::cb_load_scene },
 		{ "&Exit",			FL_ALT + 'e', (Fl_Callback *)TraceUI::cb_exit },
 		{ 0 },
 
