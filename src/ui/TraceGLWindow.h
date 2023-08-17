@@ -19,19 +19,19 @@
 class TraceGLWindow : public Fl_Gl_Window
 {
 public:
-	TraceGLWindow(int x, int y, int w, int h, const char *l);
+	TraceGLWindow(int x, int y, int w, int h, const char* l);
 	void draw();
 	int handle(int event);
 
-	RayTracer *raytracer;
+	RayTracer* raytracer;
 
 	void refresh();
 
 	void resizeWindow(int width, int height);
 
-	void saveImage(char *iname);
+	void saveImage(char* iname);
 
-	void setRayTracer(RayTracer *tracer);
+	void setRayTracer(RayTracer* tracer);
 
 private:
 	int m_nWindowWidth, m_nWindowHeight;

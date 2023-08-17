@@ -23,6 +23,7 @@
 class TraceUI
 {
 public:
+
 	TraceUI();
 
 	// The FLTK widgets

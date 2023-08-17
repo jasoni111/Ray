@@ -44,7 +44,7 @@ class BoundingBox
 public:
 	vec3f min;
 	vec3f max;
-	
+
 	void operator=(const BoundingBox& target);
 
 	// Does this bounding box intersect the target?
@@ -221,7 +221,7 @@ class SceneObject
 {
 public:
 	virtual const Material& getMaterial() const = 0;
-	virtual void setMaterial(Material *m) = 0;
+	virtual void setMaterial(Material* m) = 0;
 	bool isBox = false;
 protected:
 	SceneObject(Scene* scene)
@@ -307,37 +307,35 @@ private:
 
 namespace octTree
 {
-	class octree
+	class Octree
 	{
 	public:
 
-
-		static void insert(octree* cur_ptr, Geometry* const& obj);
+		static void insert(Octree* cur_ptr, Geometry* const& obj);
 		void split();
 
-		// vec3f min;
-		// vec3f max;
 		bool isLeaf;
-		std::unique_ptr<octree> child[8];
-		std::list<Geometry*> Geometries;
+		std::unique_ptr<Octree> child[8];
+		std::vector<Geometry*> Geometries;
 		BoundingBox bound;
 
-		octree(vec3f _min, vec3f _max) : isLeaf(true)
+		Octree() = delete;
+
+		Octree(vec3f _min, vec3f _max) : isLeaf(true)
 		{
 			bound.min = _min;
 			bound.max = _max;
 		}
 
-		octree(float _minx, float _miny, float _minz,
-		       float _maxx, float _maxy, float _maxz)
+		Octree(float _minx, float _miny, float _minz,
+			float _maxx, float _maxy, float _maxz)
 			: isLeaf(true)
 		{
 			bound.min = vec3f{ _minx,_miny,_minz };
 			bound.max = vec3f{ _maxx,_maxy,_maxz };
-			// , min(vec3f{ _minx, _miny, _minz }),
-			// 	max(vec3f{ _maxx, _maxy, _maxz })
+
 		}
-		
+
 	};
 }
 
