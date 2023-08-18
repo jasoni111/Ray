@@ -41,7 +41,7 @@ vec3f Material::shade(Scene* scene, const ray& r, const isect& i,
 	if (use_specularMap)
 		specularColor = specular_color;
 
-	const vec3f ambientLight{0, 0, 0};
+	const vec3f ambientLight{1, 1, 1};
 	// auto color = emissionColor + prod(ka, scene->ambientLight);
 	auto color = emissionColor + prod(ambientLight, ka);
 

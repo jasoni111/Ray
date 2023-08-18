@@ -12,6 +12,7 @@ namespace octTree
 {
 	//reference : http://chiranjivi.tripod.com/octrav.html
 	const int cap = 64;
+	//TODO: something is wrong with the octree
 	std::unique_ptr<Octree> root = nullptr;
 
 	void Octree::split()
@@ -20,7 +21,7 @@ namespace octTree
 		const auto& min = bound.min;
 
 		isLeaf = false;
-		auto mid = (max + min) / 2;
+		const auto mid = (max + min) / 2;
 		child[0] = make_unique<Octree>(min[0], min[1], min[2]
 			, mid[0], mid[1], mid[2]);
 		child[1] = make_unique<Octree>(min[0], min[1], mid[2]
@@ -38,7 +39,7 @@ namespace octTree
 			, max[0], max[1], mid[2]);
 		child[7] = make_unique<Octree>(mid[0], mid[1], mid[2]
 			, max[0], max[1], max[2]);
-		auto tempGeometries = std::move(Geometries);
+		auto&& tempGeometries = std::move(Geometries);
 		Geometries.clear();
 		for (auto G : tempGeometries)
 		{
@@ -122,7 +123,7 @@ namespace octTree
 		if (cur_ptr && cur_ptr->bound.intersect(r, tmin, tmax))
 		{
 			res.push_back(cur_ptr);
-			if (!(cur_ptr->isLeaf))
+			if (!cur_ptr->isLeaf)
 			{
 				for (auto i = 0; i < 8; ++i)
 				{
@@ -327,7 +328,6 @@ bool BoundingBox::intersect(const ray& r, double& tMin, double& tMax) const
 
 	tMin = -1.0e308; // 1.0e308 is close to infinity... close enough for us!
 	tMax = 1.0e308;
-	double ttemp;
 
 	for (int currentaxis = 0; currentaxis < 3; currentaxis++)
 	{
@@ -346,16 +346,10 @@ bool BoundingBox::intersect(const ray& r, double& tMin, double& tMax) const
 
 		if (t1 > t2)
 		{
-			// swap t1 & t2
-			ttemp = t1;
-			t1 = t2;
-			t2 = ttemp;
+			std::swap(t1, t2);
 		}
-
-		if (t1 > tMin)
-			tMin = t1;
-		if (t2 < tMax)
-			tMax = t2;
+		tMin = std::max(t1, tMin);
+		tMax = std::min(t2, tMax);
 
 		if (tMin > tMax) // box is missed
 			return false;
@@ -433,17 +427,14 @@ Scene::~Scene()
 // intersection through the reference parameter.
 bool Scene::intersect(const ray& r, isect& i) const
 {
-	//typedef list<Geometry*>::const_iterator iter;
-	//iter geometry;
 
 	isect cur;
 	bool have_one = false;
 
-	vector<octTree::Octree*> traverse_tree;
-	//auto traverse_tree = 
-	octTree::ray_step(octTree::root.get(), r, traverse_tree);
 	if (traceUI->getIsOctTree())
 	{
+		vector<octTree::Octree*> traverse_tree;
+		octTree::ray_step(octTree::root.get(), r, traverse_tree);
 
 		for (octTree::Octree* node : traverse_tree)
 		{
