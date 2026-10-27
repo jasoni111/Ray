@@ -2,13 +2,21 @@
 #include "material.h"
 #include "light.h"
 
+#include <atomic>
+
+int nextMaterialId()
+{
+	static std::atomic<int> itemIdentifier{ 0 };
+	return itemIdentifier++;
+}
+
 // Apply the phong model to this point on the surface of the object, returning
 // the color of that point.
 vec3f Material::shade(Scene* scene, const ray& r, const isect& i,
-	bool& use_diffuseMap, const vec3f& diffuse_color,
-	bool& use_emissionMap, const vec3f& emission_color,
-	bool& use_opacityMap, const vec3f& opacity_color,
-	bool& use_specularMap, const vec3f specular_color
+	bool use_diffuseMap, const vec3f& diffuse_color,
+	bool use_emissionMap, const vec3f& emission_color,
+	bool use_opacityMap, const vec3f& opacity_color,
+	bool use_specularMap, const vec3f& specular_color
 ) const
 {
 	// YOUR CODE HERE
@@ -45,11 +53,12 @@ vec3f Material::shade(Scene* scene, const ray& r, const isect& i,
 	// auto color = emissionColor + prod(ka, scene->ambientLight);
 	auto color = emissionColor + prod(ambientLight, ka);
 
-	for (auto l = scene->beginLights();
-	     l != scene->endLights(); ++l)
+	for (Light* pLight : scene->getLights())
 	{
-		Light* pLight = *l;
 		auto L = pLight->getDirection(P);
+		if (Normal.dot(L) <= 0.0)
+			continue;
+
 		auto Lightcolor = pLight->getColor(P);
 		const auto distAttenuation = pLight->distanceAttenuation(P);
 		const auto shadowAttenuation = pLight->shadowAttenuation(P);

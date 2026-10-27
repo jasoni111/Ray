@@ -1,5 +1,4 @@
 #include <cmath>
-#include <float.h>
 #include "trimesh.h"
 
 Trimesh::~Trimesh()
@@ -54,87 +53,88 @@ Trimesh::doubleCheck()
 	return 0;
 }
 
-// Intersect ray r with the triangle abc.  If it hits returns true,
-// and put the parameter in t and the barycentric coordinates of the
-// intersection in bary.
-// Uses the algorithm and notation from _Graphic Gems 5_, p. 232.
-//
-// Calculates and returns the normal of the triangle too.
+bool TrimeshFace::isTransparent() const
+{
+	if (material && !material->kt.iszero())
+		return true;
+	if (parent && !parent->materials.empty())
+	{
+		for (int k = 0; k < 3; ++k)
+		{
+			if (parent->materials[ids[k]] && !parent->materials[ids[k]]->kt.iszero())
+				return true;
+		}
+	}
+	return false;
+}
+
+void TrimeshFace::cacheShadingAttributes()
+{
+	hasVNorm = parent && !parent->normals.empty();
+	if (hasVNorm)
+	{
+		wn0 = transform->localToGlobalCoordsNormal(parent->normals[ids[0]]);
+		wn1 = transform->localToGlobalCoordsNormal(parent->normals[ids[1]]);
+		wn2 = transform->localToGlobalCoordsNormal(parent->normals[ids[2]]);
+	}
+	hasVMat = parent && !parent->materials.empty();
+}
+
+void TrimeshFace::prepareForTrace()
+{
+	cacheShadingAttributes();
+}
+
 bool TrimeshFace::intersectLocal(const ray& r, isect& i) const
 {
-	const vec3f& a = parent->vertices[ids[0]];
-	const vec3f& b = parent->vertices[ids[1]];
-	const vec3f& c = parent->vertices[ids[2]];
-
-	vec3f bary;
-	vec3f n;
-
-	vec3f p = r.getPosition();
-	vec3f v = r.getDirection();
-
-	vec3f ab = b - a;
-	vec3f ac = c - a;
-	vec3f ap = p - a;
-
-	vec3f cv = ab.cross(ac);
-
-	// there exists some bad triangles such that two vertices coincide
-	// check this before normalize
-	if (cv.iszero()) return false;
-	n = (cv).normalize();
-
-	double vdotn = v * n;
-	if (-vdotn < NORMAL_EPSILON)
+	if (degenerate)
 		return false;
 
-	double t = -(ap * n) / vdotn;
+	const vec3f& orig = r.getPosition();
+	const vec3f& dir = r.getDirection();
 
+	if (-dir.dot(faceN) < NORMAL_EPSILON)
+		return false;
+
+	const vec3f pvec = dir.cross(e2);
+	const double det = e1.dot(pvec);
+	if (det > -RAY_EPSILON && det < RAY_EPSILON)
+		return false;
+
+	const double invDet = 1.0 / det;
+	const vec3f tvec = orig - w0;
+	const double u = tvec.dot(pvec) * invDet;
+	if (u < 0.0 || u > 1.0)
+		return false;
+
+	const vec3f qvec = tvec.cross(e1);
+	const double v = dir.dot(qvec) * invDet;
+	if (v < 0.0 || u + v > 1.0)
+		return false;
+
+	const double t = e2.dot(qvec) * invDet;
 	if (t < RAY_EPSILON)
 		return false;
 
-	// find k where k is the index of the component
-	// of normal vector with greatest absolute value
-	float greatestMag = FLT_MIN;
-	int k = -1;
-	for (int j = 0; j < 3; ++j)
-	{
-		float val = static_cast<float>(abs(n[j]));
-		if (val > greatestMag)
-		{
-			k = j;
-			greatestMag = val;
-		}
-	}
-
-	vec3f am = ap + t * v;
-
-	bary[1] = (am.cross(ac))[k] / (ab.cross(ac))[k];
-	bary[2] = (ab.cross(am))[k] / (ab.cross(ac))[k];
-	bary[0] = 1 - bary[1] - bary[2];
-	if (bary[0] < 0 || bary[1] < 0 || bary[1] > 1 || bary[2] < 0 || bary[2] > 1)
-		return false;
-
-	// if we get this far, we have an intersection.  Fill in the info.
-	i.setT(t);
-	if (parent->normals.size())
-	{
-		// use interpolated normals
-		i.setN((bary[0] * parent->normals[ids[0]]
-			+ bary[1] * parent->normals[ids[1]]
-			+ bary[2] * parent->normals[ids[2]]).normalize());
-	}
-	else {
-		i.setN(n);           // use face normal
-	}
 	i.obj = this;
-
-	// linearly interpolate materials
-	if (parent->materials.size())
+	i.t = t;
+	if (hasVNorm)
 	{
-		Material* m = new Material();
-		for (int jj = 0; jj < 3; ++jj)
-			(*m) += bary[jj] * (*parent->materials[ids[jj]]);
-		i.setMaterial(m);
+		const double w = 1.0 - u - v;
+		i.N = (w * wn0 + u * wn1 + v * wn2).normalize();
+	}
+	else
+	{
+		i.N = faceN;
+	}
+
+	if (hasVMat)
+	{
+		i.bu = u;
+		i.bv = v;
+		i.vm0 = parent->materials[ids[0]];
+		i.vm1 = parent->materials[ids[1]];
+		i.vm2 = parent->materials[ids[2]];
 	}
 
 	return true;

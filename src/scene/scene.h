@@ -10,6 +10,9 @@
 
 #include <list>
 #include <algorithm>
+#include <memory>
+#include <vector>
+#include <cmath>
 
 using namespace std;
 
@@ -89,33 +92,59 @@ public:
 		return child;
 	}
 
+	bool isIdentity() const { return identity; }
+
 	// Coordinate-Space transformation
-	vec3f globalToLocalCoords(const vec3f& v)
+	vec3f globalToLocalCoords(const vec3f& v) const
 	{
 		return inverse * v;
 	}
 
-	vec3f localToGlobalCoords(const vec3f& v)
+	vec3f localToGlobalCoords(const vec3f& v) const
 	{
 		return xform * v;
 	}
 
-	vec4f localToGlobalCoords(const vec4f& v)
+	vec4f localToGlobalCoords(const vec4f& v) const
 	{
 		return xform * v;
 	}
 
-	vec3f localToGlobalCoordsNormal(const vec3f& v)
+	vec3f globalToLocalDirection(const vec3f& d) const
+	{
+		return vec3f(
+			inverse[0][0] * d[0] + inverse[0][1] * d[1] + inverse[0][2] * d[2],
+			inverse[1][0] * d[0] + inverse[1][1] * d[1] + inverse[1][2] * d[2],
+			inverse[2][0] * d[0] + inverse[2][1] * d[1] + inverse[2][2] * d[2]);
+	}
+
+	vec3f localToGlobalCoordsNormal(const vec3f& v) const
 	{
 		return (normi * v).normalize();
 	}
 
 protected:
+	bool identity;
+
+	static bool matrixIsIdentity(const mat4f& m)
+	{
+		for (int i = 0; i < 4; ++i)
+		{
+			for (int j = 0; j < 4; ++j)
+			{
+				const double expect = (i == j) ? 1.0 : 0.0;
+				if (std::fabs(m[i][j] - expect) > 1e-12)
+					return false;
+			}
+		}
+		return true;
+	}
+
 	// protected so that users can't directly construct one of these...
 	// force them to use the createChild() method.  Note that they CAN
 	// directly create a TransformRoot object.
 	TransformNode(TransformNode* parent, const mat4f& xform)
-		: children()
+		: children(), identity(false)
 	{
 		this->parent = parent;
 		if (parent == NULL)
@@ -125,6 +154,7 @@ protected:
 
 		inverse = this->xform.inverse();
 		normi = this->xform.upper33().inverse().transpose();
+		identity = matrixIsIdentity(this->xform);
 	}
 };
 
@@ -145,7 +175,7 @@ class Geometry
 {
 public:
 	// intersections performed in the global coordinate space.
-	virtual bool intersect(const ray& r, isect& i) const;
+	virtual bool intersect(const ray& r, isect& i, double maxT = 1.0e308) const;
 
 	// intersections performed in the object's local coordinate space
 	// do not call directly - this should only be called by intersect()
@@ -153,6 +183,9 @@ public:
 
 
 	virtual bool hasBoundingBoxCapability() const;
+	virtual bool isTransparent() const { return false; }
+	virtual bool isIntersectable() const { return true; }
+	virtual void prepareForTrace() {}
 	const BoundingBox& getBoundingBox() const { return bounds; }
 
 	virtual void ComputeBoundingBox()
@@ -194,6 +227,7 @@ public:
 
 		bounds.max = vec3f(newMax);
 		bounds.min = vec3f(newMin);
+		identityTransform = transform && transform->isIdentity();
 	}
 
 	// default method for ComputeLocalBoundingBox returns a bogus bounding box;
@@ -203,12 +237,14 @@ public:
 	void setTransform(TransformNode* transform) { this->transform = transform; };
 
 	Geometry(Scene* scene)
-		: SceneElement(scene)
+		: SceneElement(scene), identityTransform(false), worldSpace(false), transform(nullptr)
 	{
 	}
 
 protected:
 	BoundingBox bounds;
+	bool identityTransform;
+	bool worldSpace;
 	TransformNode* transform;
 };
 
@@ -240,6 +276,7 @@ public:
 
 	virtual const Material& getMaterial() const { return *material; }
 	virtual void setMaterial(Material* m) { material = m; }
+	virtual bool isTransparent() const { return material && !material->kt.iszero(); }
 
 protected:
 	MaterialSceneObject(Scene* scene, Material* mat)
@@ -256,8 +293,8 @@ protected:
 class Scene
 {
 public:
-	typedef list<Light*>::iterator liter;
-	typedef list<Light*>::const_iterator cliter;
+	typedef vector<Light*>::iterator liter;
+	typedef vector<Light*>::const_iterator cliter;
 
 	typedef list<Geometry*>::iterator giter;
 	typedef list<Geometry*>::const_iterator cgiter;
@@ -266,7 +303,7 @@ public:
 
 public:
 	Scene()
-		: transformRoot(), objects(), lights()
+		: transformRoot(), objects(), lights(), hasTransparent(false)
 	{
 	}
 
@@ -283,20 +320,23 @@ public:
 		lights.push_back(light);
 	}
 
-	bool intersect(const ray& r, isect& i) const;
+	bool intersect(const ray& r, isect& i, double maxT = 1.0e308, bool anyHit = false) const;
 	void initScene();
+	bool hasTransparentObjects() const { return hasTransparent; }
 
-	list<Light*>::const_iterator beginLights() const { return lights.begin(); }
-	list<Light*>::const_iterator endLights() const { return lights.end(); }
+	const vector<Light*>& getLights() const { return lights; }
+	vector<Light*>::const_iterator beginLights() const { return lights.begin(); }
+	vector<Light*>::const_iterator endLights() const { return lights.end(); }
 
 	Camera* getCamera() { return &camera; }
 
 private:
 	list<Geometry*> objects;
-	list<Geometry*> nonboundedobjects;
-	list<Geometry*> boundedobjects;
-	list<Light*> lights;
+	vector<Geometry*> nonboundedobjects;
+	vector<Geometry*> boundedobjects;
+	vector<Light*> lights;
 	Camera camera;
+	bool hasTransparent;
 
 	// Each object in the scene, provided that it has hasBoundingBoxCapability(),
 	// must fall within this bounding box.  Objects that don't have hasBoundingBoxCapability()
@@ -304,38 +344,35 @@ private:
 	BoundingBox sceneBounds;
 };
 
-
 namespace octTree
 {
 	class Octree
 	{
 	public:
-
 		static void insert(Octree* cur_ptr, Geometry* const& obj);
 		void split();
 
 		bool isLeaf;
+		int depth;
 		std::unique_ptr<Octree> child[8];
 		std::vector<Geometry*> Geometries;
 		BoundingBox bound;
 
 		Octree() = delete;
 
-		Octree(vec3f _min, vec3f _max) : isLeaf(true)
+		Octree(vec3f _min, vec3f _max, int _depth = 0) : isLeaf(true), depth(_depth)
 		{
 			bound.min = _min;
 			bound.max = _max;
 		}
 
-		Octree(float _minx, float _miny, float _minz,
-			float _maxx, float _maxy, float _maxz)
-			: isLeaf(true)
+		Octree(double _minx, double _miny, double _minz,
+			double _maxx, double _maxy, double _maxz, int _depth = 0)
+			: isLeaf(true), depth(_depth)
 		{
-			bound.min = vec3f{ _minx,_miny,_minz };
-			bound.max = vec3f{ _maxx,_maxy,_maxz };
-
+			bound.min = vec3f{ _minx, _miny, _minz };
+			bound.max = vec3f{ _maxx, _maxy, _maxz };
 		}
-
 	};
 }
 

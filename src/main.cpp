@@ -55,7 +55,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <chrono>
+#include <string>
 
 #include <FL/Fl.h>
 #include <FL/Fl_Window.H>
@@ -87,6 +88,7 @@ int recursion_depth = 0;
 int g_height;
 int g_width = 150;
 bool bReport = false;
+bool bDeterministic = false;
 char* progname, * rayName, * imgName;
 
 void usage()
@@ -104,12 +106,15 @@ void usage()
 bool processArgs(int argc, char** argv) {
 	int i;
 
-	while ((i = getopt(argc, argv, "tr:w:h:")) != EOF)
+	while ((i = getopt(argc, argv, "tr:w:h:D")) != EOF)
 	{
 		switch (i)
 		{
 		case 't':
 			bReport = true;
+			break;
+		case 'D':
+			bDeterministic = true;
 			break;
 
 		case 'r':
@@ -159,7 +164,18 @@ int main(int argc, char** argv) {
 			exit(1);
 		}
 
+		// Extra-credit features read settings from the FLTK widgets, so the
+		// UI must exist even when we never show a window.
+		traceUI = new TraceUI();
 		theRayTracer = new RayTracer();
+		traceUI->setRayTracer(theRayTracer);
+		if (bDeterministic) {
+			traceUI->m_softShadow->value(0);
+			traceUI->m_glossyReflection->value(0);
+			traceUI->m_jitter->value(0);
+			traceUI->m_adaptiveSampling->value(0);
+		}
+		theRayTracer->max_depth = recursion_depth;
 		theRayTracer->loadScene(rayName);
 
 		if (theRayTracer->sceneLoaded()) {
@@ -167,12 +183,17 @@ int main(int argc, char** argv) {
 
 			theRayTracer->traceSetup(g_width, g_height);
 
-			clock_t start, end;
-			start = clock();
-
+			const auto start = std::chrono::steady_clock::now();
 			theRayTracer->traceLines(0, g_height);
-
-			end = clock();
+			const auto end = std::chrono::steady_clock::now();
+			const double elapsed = std::chrono::duration<double>(end - start).count();
+			{
+				const std::string timePath = std::string(imgName) + ".time";
+				if (FILE* tf = fopen(timePath.c_str(), "w")) {
+					fprintf(tf, "%.6f\n", elapsed);
+					fclose(tf);
+				}
+			}
 
 			// save image
 			unsigned char* buf;
@@ -182,7 +203,7 @@ int main(int argc, char** argv) {
 				writeBMP(imgName, g_width, g_height, buf);
 
 			if (bReport) {
-				double t = (double)(end - start) / CLOCKS_PER_SEC;
+				double t = elapsed;
 #ifdef WIN32
 				fl_message("total time = %.3f seconds\n", t);
 #else

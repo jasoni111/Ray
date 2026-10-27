@@ -1,7 +1,6 @@
 #ifndef TRIMESH_H__
 #define TRIMESH_H__
 
-#include <list>
 #include <vector>
 
 #include "../scene/ray.h"
@@ -39,15 +38,21 @@ public:
     char *doubleCheck();
     
     void generateNormals();
+    virtual bool isIntersectable() const { return false; }
 };
 
 class TrimeshFace : public MaterialSceneObject
 {
     Trimesh *parent;
     int ids[3];
+    vec3f w0, e1, e2, faceN;
+    vec3f wn0, wn1, wn2;
+    bool degenerate;
+    bool hasVNorm;
+    bool hasVMat;
 public:
     TrimeshFace( Scene *scene, Material *mat, Trimesh *parent, int a, int b, int c)
-        : MaterialSceneObject( scene, mat )
+        : MaterialSceneObject( scene, mat ), degenerate(false), hasVNorm(false), hasVMat(false)
     {
         this->parent = parent;
         ids[0] = a;
@@ -63,6 +68,28 @@ public:
     virtual bool intersectLocal( const ray& r, isect& i ) const;
 
     virtual bool hasBoundingBoxCapability() const { return true; }
+    virtual bool isTransparent() const;
+    virtual void prepareForTrace();
+    void cacheShadingAttributes();
+
+    virtual void ComputeBoundingBox()
+    {
+        Geometry::ComputeBoundingBox();
+
+        const vec3f& a = parent->vertices[ids[0]];
+        const vec3f& b = parent->vertices[ids[1]];
+        const vec3f& c = parent->vertices[ids[2]];
+        w0 = transform->localToGlobalCoords(a);
+        const vec3f w1 = transform->localToGlobalCoords(b);
+        const vec3f w2 = transform->localToGlobalCoords(c);
+        e1 = w1 - w0;
+        e2 = w2 - w0;
+        const vec3f cv = e1.cross(e2);
+        degenerate = cv.iszero();
+        if (!degenerate)
+            faceN = cv.normalize();
+        worldSpace = true;
+    }
       
     virtual BoundingBox ComputeLocalBoundingBox()
     {

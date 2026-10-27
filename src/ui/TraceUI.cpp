@@ -3,16 +3,19 @@
 //
 // Handles FLTK integration and other user interface tasks
 //
+#define NOMINMAX
 #include <stdio.h>
-#include <time.h>
 #include <string.h>
+#include <atomic>
+#include <ppl.h>
 
 #include <FL/fl_ask.h>
 
 #include "TraceUI.h"
 #include "../RayTracer.h"
+#include "../scene/ray.h"
 
-static bool done;
+static std::atomic<bool> done{ false };
 
 //------------------------------------- Help Functions --------------------------------------------
 TraceUI* TraceUI::whoami(Fl_Menu_* o)	// from menu item back to UI itself
@@ -32,7 +35,7 @@ void TraceUI::cb_load_scene(Fl_Menu_* o, void* v)
 
 		if (pUI->raytracer->loadScene(newfile)) {
 			sprintf(buf, "Ray <%s>", newfile);
-			done = true;	// terminate the previous rendering
+			done.store(true);	// terminate the previous rendering
 		}
 		else {
 			sprintf(buf, "Ray <Not Loaded>");
@@ -57,7 +60,7 @@ void TraceUI::cb_exit(Fl_Menu_* o, void* v)
 	TraceUI* pUI = whoami(o);
 
 	// terminate the rendering
-	done = true;
+	done.store(true);
 
 	pUI->m_traceGlWindow->hide();
 	pUI->m_mainWindow->hide();
@@ -104,7 +107,7 @@ void TraceUI::cb_exit2(Fl_Widget* o, void* v)
 	TraceUI* pUI = (TraceUI*)(o->user_data());
 
 	// terminate the rendering
-	done = true;
+	done.store(true);
 
 	pUI->m_traceGlWindow->hide();
 	pUI->m_mainWindow->hide();
@@ -183,63 +186,55 @@ void TraceUI::cb_render(Fl_Widget* o, void* v)
 		pUI->m_traceGlWindow->show();
 
 		pUI->raytracer->traceSetup(width, height);
+		pUI->raytracer->max_depth = pUI->getDepth();
 
 		// Save the window label
 		const char* old_label = pUI->m_traceGlWindow->label();
 
 		// start to render here	
-		done = false;
-		clock_t prev, now;
-		prev = clock();
+		done.store(false);
 
 		pUI->m_traceGlWindow->refresh();
 		Fl::check();
 		Fl::flush();
 
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				if (done) break;
+		const int chunk = 8;
+		for (int y = 0; y < height; y += chunk) {
+			if (done.load()) break;
 
-				// current time
-				now = clock();
-
-				// check event every 1/2 second
-				if (((double)(now - prev) / CLOCKS_PER_SEC) > 0.5) {
-					prev = now;
-
-					if (Fl::ready()) {
-						// refresh
-						pUI->m_traceGlWindow->refresh();
-						// check event
-						Fl::check();
-
-						if (Fl::damage()) {
-							Fl::flush();
-						}
+			const int y1 = (y + chunk < height) ? (y + chunk) : height;
+			if (g_render.parallel)
+			{
+				Concurrency::parallel_for(y, y1, [&](int j) {
+					for (int x = 0; x < width; ++x) {
+						if (done.load(std::memory_order_relaxed))
+							return;
+						pUI->raytracer->tracePixel(x, j);
 					}
-				}
-
-				pUI->raytracer->max_depth = pUI->getDepth();
-				pUI->raytracer->tracePixel(x, y);
-
+				});
 			}
-			if (done) break;
+			else
+			{
+				for (int j = y; j < y1; ++j) {
+					for (int x = 0; x < width; ++x) {
+						if (done.load()) break;
+						pUI->raytracer->tracePixel(x, j);
+					}
+					if (done.load()) break;
+				}
+			}
 
-			// flush when finish a row
 			if (Fl::ready()) {
-				// refresh
 				pUI->m_traceGlWindow->refresh();
-
+				Fl::check();
 				if (Fl::damage()) {
 					Fl::flush();
 				}
 			}
-			// update the window label
-			sprintf(buffer, "(%d%%) %s", (int)((double)y / (double)height * 100.0), old_label);
+			sprintf(buffer, "(%d%%) %s", (int)((double)y1 / (double)height * 100.0), old_label);
 			pUI->m_traceGlWindow->label(buffer);
-
 		}
-		done = true;
+		done.store(true);
 		pUI->m_traceGlWindow->refresh();
 
 		// Restore the window label
@@ -249,7 +244,7 @@ void TraceUI::cb_render(Fl_Widget* o, void* v)
 
 void TraceUI::cb_stop(Fl_Widget* o, void* v)
 {
-	done = true;
+	done.store(true);
 }
 
 void TraceUI::show()
@@ -278,9 +273,9 @@ const double& TraceUI::getNumOfSupPixel() const
 	return this->m_nNumOfSupPixel;
 }
 
-char TraceUI::getIsOctTree() const
+int TraceUI::getAccelMode() const
 {
-	return this->m_octTree->value();
+	return this->m_accelChoice->value();
 }
 
 const double& TraceUI::getThreshold() const
@@ -335,7 +330,7 @@ TraceUI::TraceUI() :raytracer(nullptr) {
 	m_nFocalLength = 5;
 	m_nApertureSize = 5;
 
-	m_mainWindow = new Fl_Window(100, 40, 340, 480, "Ray <Not Loaded>");
+	m_mainWindow = new Fl_Window(100, 40, 340, 510, "Ray <Not Loaded>");
 	m_mainWindow->user_data((void*)(this));	// record self to be used by static callback functions
 	// install menu bar
 	m_menubar = new Fl_Menu_Bar(0, 0, 320, 25);
@@ -502,12 +497,18 @@ TraceUI::TraceUI() :raytracer(nullptr) {
 	m_adaptiveIllustrate->callback(cb_render);
 
 	w = 10;
-	m_octTree = new Fl_Light_Button(w, h += 30, 100, 25, "OctTree");
-	m_octTree->user_data((void*)(this));
-	m_octTree->callback(cb_render);
-	m_octTree->value(true);
+	m_accelChoice = new Fl_Choice(55, h += 30, 130, 25, "Accel");
+	m_accelChoice->user_data((void*)(this));
+	m_accelChoice->labelfont(FL_COURIER);
+	m_accelChoice->labelsize(12);
+	m_accelChoice->add("None");
+	m_accelChoice->add("Octree");
+	m_accelChoice->add("BVH");
+	m_accelChoice->value(AccelBVH);
+	m_accelChoice->callback(cb_render);
 
-	m_enableCaustics = new Fl_Light_Button(w += 110, h, 100, 25, "Enable Caustics");
+	w = 10;
+	m_enableCaustics = new Fl_Light_Button(w, h += 30, 100, 25, "Enable Caustics");
 	m_enableCaustics->user_data((void*)(this));
 	m_enableCaustics->callback(cb_render);
 

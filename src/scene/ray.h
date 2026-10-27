@@ -7,8 +7,6 @@
 #ifndef __RAY_H__
 #define __RAY_H__
 
-#include <vector>
-
 #include "../vecmath/vecmath.h"
 #include "material.h"
 
@@ -20,14 +18,11 @@ class SceneObject;
 class ray {
 public:
 	ray(const vec3f& pp, const vec3f& dd)
-		: p(pp), d(dd) {}
-	ray(const ray& other)
-		: p(other.p), d(other.d) {}
-	~ray() {}
-
-	ray& operator =(const ray& other)
+		: p(pp), d(dd)
 	{
-		p = other.p; d = other.d; return *this;
+		inv_d[0] = (dd[0] != 0.0) ? (1.0 / dd[0]) : 1.0e308;
+		inv_d[1] = (dd[1] != 0.0) ? (1.0 / dd[1]) : 1.0e308;
+		inv_d[2] = (dd[2] != 0.0) ? (1.0 / dd[2]) : 1.0e308;
 	}
 
 	vec3f at(double t) const
@@ -35,12 +30,14 @@ public:
 		return p + (t * d);
 	}
 
-	vec3f getPosition() const { return p; }
-	vec3f getDirection() const { return d; }
+	const vec3f& getPosition() const { return p; }
+	const vec3f& getDirection() const { return d; }
+	const vec3f& getInvDirection() const { return inv_d; }
 
 protected:
 	vec3f p;
 	vec3f d;
+	vec3f inv_d;
 };
 
 // The description of an intersection point.
@@ -49,67 +46,72 @@ class isect
 {
 public:
 	isect()
-		: obj(nullptr), t(0.0), N(), material(0) {}
-
-	~isect()
-	{
-		delete material;
-	}
+		: obj(nullptr), t(0.0), N(), i_box_x(0.0), i_box_y(0.0),
+		  bu(0.0), bv(0.0), vm0(nullptr), vm1(nullptr), vm2(nullptr) {}
 
 	void setObject(SceneObject* o) { obj = o; }
 	void setT(double tt) { t = tt; }
 	void setN(const vec3f& n) { N = n; }
-	void setMaterial(Material* m) { delete material; material = m; }
-
-	isect& operator =(const isect& other)
-	{
-		if (this != &other)
-		{
-			obj = other.obj;
-			t = other.t;
-			N = other.N;
-			i_box_x = other.i_box_x;
-			i_box_y = other.i_box_y;
-			//            material = other.material ? new Material( *(other.material) ) : 0;
-			if (other.material)
-			{
-				if (material)
-					*material = *other.material;
-				else
-					material = new Material(*other.material);
-			}
-			else
-			{
-				material = 0;
-			}
-		}
-		return *this;
-	}
 
 public:
 	const SceneObject* obj;
 	double t;
 	vec3f N;
-	Material* material;         // if this intersection has its own material
-	// (as opposed to one in its associated object)
-	// as in the case where the material was interpolated
 
-// intersection on box plane, range[0, 1]
+	// intersection on box plane, range[0, 1]
 	double i_box_x, i_box_y;
 
+	// optional barycentric vertex-material interpolation (no heap)
+	double bu, bv;
+	const Material* vm0;
+	const Material* vm1;
+	const Material* vm2;
+
 	const Material& getMaterial() const;
-	// Other info here.
+	const Material& getMaterial(Material& scratch) const;
 };
 
 const double RAY_EPSILON = 0.00001;
 const double NORMAL_EPSILON = 0.00001;
 
+struct Medium
+{
+	double index;
+	double id;
+};
 
+enum AccelMode
+{
+	AccelNone = 0,
+	AccelOctree = 1,
+	AccelBVH = 2
+};
+
+struct RenderSettings
+{
+	double threshold = 0.0;
+	double attenConst = 0.0;
+	double attenLinear = 0.0;
+	double attenQuad = 1.0;
+	int superSampleRate = 1;
+	bool softShadow = false;
+	bool glossyReflection = false;
+	bool adaptiveSampling = false;
+	bool jitter = false;
+	AccelMode accel = AccelBVH;
+	bool boxDiffuse = false;
+	bool boxEmission = false;
+	bool boxOpacity = false;
+	bool boxSpecular = false;
+	bool parallel = true;
+};
+
+extern RenderSettings g_render;
 
 namespace helperFun
 {
-	double inline getRand(double r);
-	std::vector<vec3f> sampleRay(vec3f rayVec, double r, int num_sample);
+	double getRand(double r);
+	void sampleRay(const vec3f& rayVec, double r, int num_sample, vec3f* out);
 }
 
 
