@@ -5,15 +5,16 @@
 
 #include "RayTracer.h"
 
-#include <stack>
-
 #include "scene/light.h"
 #include "scene/material.h"
 #include "scene/ray.h"
 #include "fileio/read.h"
 #include "fileio/parse.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
+#include <string.h>
 #include <ppl.h>
 
 #include "ui/TraceUI.h"
@@ -21,24 +22,22 @@ extern TraceUI* traceUI;
 
 namespace
 {
-	std::array<double, 2> getInOutRefractionIndex(std::vector<Material>& materials_in, const Material& m)
+	std::array<double, 2> getInOutRefractionIndex(std::vector<Medium>& materials_in, const Material& m)
 	{
 		double inRefractionIndex;
 		double OutRefractionIndex;
 
 		if (materials_in.empty())
 		{
-			//getting in
 			inRefractionIndex = 1;
 			OutRefractionIndex = m.index;
-			materials_in.push_back(m);
+			materials_in.push_back(Medium{ m.index, m.id });
 		}
 		else
 		{
 			inRefractionIndex = materials_in.back().index;
 			if (materials_in.back().id == m.id)
 			{
-				//getting out
 				materials_in.pop_back();
 				if (materials_in.empty())
 				{
@@ -51,12 +50,10 @@ namespace
 			}
 			else
 			{
-				//getting in
-				materials_in.push_back(m);
+				materials_in.push_back(Medium{ m.index, m.id });
 				OutRefractionIndex = m.index;
 			}
 		}
-
 
 		return std::array<double, 2>{inRefractionIndex, OutRefractionIndex};
 	}
@@ -103,7 +100,7 @@ vec3f RayTracer::trace(Scene* scene, double x, double y)
 	ray r(vec3f(0, 0, 0), vec3f(0, 0, 0));
 	scene->getCamera()->rayThrough(x, y, r);
 
-	std::vector<Material> materials_in;
+	std::vector<Medium> materials_in;
 
 	return traceRay(scene, r, vec3f(1.0, 1.0, 1.0), 0,
 		materials_in).clamp();
@@ -114,7 +111,7 @@ vec3f RayTracer::trace(Scene* scene, double x, double y)
 // (or places called from here) to handle reflection, refraction, etc etc.
 vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 	const vec3f& thresh, int depth,
-	const std::vector<Material>& materials_in)
+	const std::vector<Medium>& materials_in)
 {
 	isect i;
 
@@ -138,24 +135,25 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 
 		// auto phong = m.shade(scene,r,i,in)
 		vec3f Normal = i.N;
-		const auto& V = r.getDirection();;
+		const auto& V = r.getDirection();
 		const auto Pos = r.at(i.t);
 
-		const Material& m = i.getMaterial();
+		Material matScratch;
+		const Material& m = i.getMaterial(matScratch);
 
-		bool use_diffuseMap = i.obj->isBox && traceUI->m_boxDiffuseTexture->value();
-		bool use_emissionMap = i.obj->isBox && traceUI->m_boxEmissionTexture->value();
-		bool use_opacityMap = i.obj->isBox && traceUI->m_boxOpacity->value();
-		bool use_specularMap = i.obj->isBox && traceUI->m_boxSpecularTexture->value();
+		const bool use_diffuseMap = i.obj->isBox && g_render.boxDiffuse;
+		const bool use_emissionMap = i.obj->isBox && g_render.boxEmission;
+		const bool use_opacityMap = i.obj->isBox && g_render.boxOpacity;
+		const bool use_specularMap = i.obj->isBox && g_render.boxSpecular;
 
 		const auto phong = m.shade(scene, r, i,
-			use_diffuseMap, diffuseMap.getColor(i.i_box_x, i.i_box_y),
-			use_emissionMap, emissionMap.getColor(i.i_box_x, i.i_box_y),
-			use_opacityMap, opacityMap.getColor(i.i_box_x, i.i_box_y),
-			use_specularMap, specularMap.getColor(i.i_box_x, i.i_box_y)
+			use_diffuseMap, use_diffuseMap ? diffuseMap.getColor(i.i_box_x, i.i_box_y) : m.kd,
+			use_emissionMap, use_emissionMap ? emissionMap.getColor(i.i_box_x, i.i_box_y) : m.ke,
+			use_opacityMap, use_opacityMap ? opacityMap.getColor(i.i_box_x, i.i_box_y) : vec3f(1, 1, 1) - m.kt,
+			use_specularMap, use_specularMap ? specularMap.getColor(i.i_box_x, i.i_box_y) : m.ks
 		);
 
-		if (traceUI->getThreshold() > phong.length())
+		if (g_render.threshold > 0.0 && phong.length_squared() < g_render.threshold * g_render.threshold)
 		{
 			return phong;
 		}
@@ -174,12 +172,13 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 			const auto rVec = (V - 2 * Normal.dot(V) * Normal).normalize();
 			ray reflectedRay{ Pos + rVec * RAY_EPSILON, rVec };
 			reflectColor = traceRay(scene, reflectedRay, thresh, depth + 1, materials_in);
-			if (traceUI->m_glossyReflection->value())
+			if (g_render.glossyReflection)
 			{
-				auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 20);
-				for (const auto& sampleVec : sampleVecs)
+				vec3f sampleVecs[20];
+				helperFun::sampleRay(rVec, 0.01, 20, sampleVecs);
+				for (int s = 0; s < 20; ++s)
 				{
-					ray glossyRay{ Pos + sampleVec * RAY_EPSILON, sampleVec };
+					ray glossyRay{ Pos + sampleVecs[s] * RAY_EPSILON, sampleVecs[s] };
 					reflectColor += traceRay(scene, glossyRay, thresh,
 						std::max(max_depth - 1, depth + 1), materials_in);
 				}
@@ -191,7 +190,7 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 		vec3f refractColor(0.0, 0.0, 0.0);
 		if (depth < max_depth && !m.kt.iszero())
 		{
-			std::vector<Material> stack = materials_in;
+			std::vector<Medium> stack = materials_in;
 			const auto InOut = getInOutRefractionIndex(stack, m);
 			const auto refractionVec = calRefractionVec(V, Normal, InOut[0], InOut[1]);
 			if (!refractionVec.iszero())
@@ -297,20 +296,62 @@ void RayTracer::traceSetup(int w, int h)
 		buffer = new unsigned char[bufferSize];
 	}
 	memset(buffer, 0, w * h * 3);
+
+	if (traceUI)
+	{
+		g_render.threshold = traceUI->getThreshold();
+		g_render.attenConst = traceUI->getAttenConst();
+		g_render.attenLinear = traceUI->getAttenLinear();
+		g_render.attenQuad = traceUI->getAttenQuad();
+		g_render.superSampleRate = static_cast<int>(traceUI->getNumOfSupPixel());
+		if (g_render.superSampleRate < 1)
+			g_render.superSampleRate = 1;
+		g_render.softShadow = traceUI->m_softShadow && traceUI->m_softShadow->value();
+		g_render.glossyReflection = traceUI->m_glossyReflection && traceUI->m_glossyReflection->value();
+		g_render.adaptiveSampling = traceUI->m_adaptiveSampling && traceUI->m_adaptiveSampling->value();
+		g_render.jitter = traceUI->m_jitter && traceUI->m_jitter->value();
+		g_render.accel = static_cast<AccelMode>(traceUI->getAccelMode());
+		g_render.boxDiffuse = traceUI->m_boxDiffuseTexture && traceUI->m_boxDiffuseTexture->value();
+		g_render.boxEmission = traceUI->m_boxEmissionTexture && traceUI->m_boxEmissionTexture->value();
+		g_render.boxOpacity = traceUI->m_boxOpacity && traceUI->m_boxOpacity->value();
+		g_render.boxSpecular = traceUI->m_boxSpecularTexture && traceUI->m_boxSpecularTexture->value();
+	}
+	g_render.parallel = std::getenv("RAY_SERIAL") == nullptr;
+	if (const char* a = std::getenv("RAY_ACCEL"))
+	{
+		if (_stricmp(a, "none") == 0 || _stricmp(a, "off") == 0 || _stricmp(a, "linear") == 0)
+			g_render.accel = AccelNone;
+		else if (_stricmp(a, "octree") == 0 || _stricmp(a, "oct") == 0 || _stricmp(a, "octtree") == 0)
+			g_render.accel = AccelOctree;
+		else if (_stricmp(a, "bvh") == 0)
+			g_render.accel = AccelBVH;
+	}
+	if (std::getenv("RAY_NO_ACCEL"))
+		g_render.accel = AccelNone;
 }
 
 void RayTracer::traceLines(int start, int stop)
 {
-	vec3f col;
 	if (!scene)
 		return;
 
 	if (stop > buffer_height)
 		stop = buffer_height;
 
-	for (int j = start; j < stop; ++j)
-		for (int i = 0; i < buffer_width; ++i)
-			tracePixel(i, j);
+	if (g_render.parallel && (stop - start) > 1)
+	{
+		Concurrency::parallel_for(start, stop, [this](int j)
+		{
+			for (int i = 0; i < buffer_width; ++i)
+				tracePixel(i, j);
+		});
+	}
+	else
+	{
+		for (int j = start; j < stop; ++j)
+			for (int i = 0; i < buffer_width; ++i)
+				tracePixel(i, j);
+	}
 }
 
 
@@ -323,18 +364,11 @@ vec3f RayTracer::adaptiveTracePixel(const double& i, const double& j, const doub
 
 	double x0 = i - dw / 2.f, x1 = i + dw / 2.f;
 	double y0 = j - dh / 2.f, y1 = j + dh / 2.f;
-	vec3f c00;
-	vec3f c01;
-	vec3f c10;
-	vec3f c11;
-	vec3f c;
-	Concurrency::parallel_invoke(
-		[&] { c00 = trace(scene, x0, y0); },
-		[&] { c01 = trace(scene, x0, y1); },
-		[&] { c10 = trace(scene, x1, y0); },
-		[&] { c11 = trace(scene, x1, y1); },
-		[&] { c = trace(scene, i, j); }
-	);
+	const vec3f c00 = trace(scene, x0, y0);
+	const vec3f c01 = trace(scene, x0, y1);
+	const vec3f c10 = trace(scene, x1, y0);
+	const vec3f c11 = trace(scene, x1, y1);
+	const vec3f c = trace(scene, i, j);
 	vec3f toReturn = c;
 
 	auto num_trace = 1;
@@ -359,7 +393,6 @@ vec3f RayTracer::adaptiveTracePixel(const double& i, const double& j, const doub
 		toReturn += adaptiveTracePixel(i + dw / 4.f, j - dh / 4.f, dw / 2.f, dh / 2.f, depth + 1);
 		++num_trace;
 	}
-	// toReturn = vec3f(1, 1, 1);
 	return toReturn / num_trace;
 }
 
@@ -374,33 +407,27 @@ void RayTracer::tracePixel(int i, int j)
 	double x = double(i) / double(buffer_width);
 	double y = double(j) / double(buffer_height);
 
-	const auto isAdaptiveSuperRes = traceUI->m_adaptiveSampling->value();
-	if (isAdaptiveSuperRes)
+	if (g_render.adaptiveSampling)
 	{
-		//adaptive
 		col = this->adaptiveTracePixel(x, y, 1.0 / buffer_width, 1.0 / buffer_height, 0);
 	}
 	else
 	{
-		//super sample
 		col = { 0, 0, 0 };
 
-		const auto superSampleRate = traceUI->getNumOfSupPixel();
-
-		//non adaptive
-		const auto jitter = traceUI->m_jitter->value() == 1;
+		const int superSampleRate = g_render.superSampleRate;
+		const int jitter = g_render.jitter ? 1 : 0;
 		const auto dw = 1.0 / buffer_width / superSampleRate;
 		const auto dh = 1.0 / buffer_height / superSampleRate;
-		for (auto i = 0; i < superSampleRate; ++i)
+		for (int si = 0; si < superSampleRate; ++si)
 		{
-			for (auto j = 0; j < superSampleRate; ++j)
+			for (int sj = 0; sj < superSampleRate; ++sj)
 			{
-				col += trace(scene, x + i * dw + helperFun::getRand(dw) * jitter,
-					y + j * dh + helperFun::getRand(dh) * jitter);
+				col += trace(scene, x + si * dw + helperFun::getRand(dw) * jitter,
+					y + sj * dh + helperFun::getRand(dh) * jitter);
 			}
 		}
 		col /= superSampleRate * superSampleRate;
-		// col = trace(scene, x, y);
 	}
 
 	unsigned char* pixel = buffer + (i + j * buffer_width) * 3;

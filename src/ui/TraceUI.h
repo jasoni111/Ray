@@ -15,6 +15,7 @@
 #include <FL/Fl_Button.H>
 
 #include <FL/Fl_Light_Button.H>
+#include <FL/Fl_Choice.H>
 
 #include <FL/fl_file_chooser.H>		// FLTK file chooser
 
@@ -56,7 +57,7 @@ public:
 	Fl_Light_Button* m_adaptiveSampling;
 	Fl_Light_Button* m_adaptiveIllustrate;
 	Fl_Light_Button* m_jitter;
-	Fl_Light_Button* m_octTree;
+	Fl_Choice* m_accelChoice;
 	Fl_Light_Button* m_enableCaustics;
 
 	Fl_Light_Button* m_boxEmissionTexture;
@@ -76,7 +77,7 @@ public:
 	const double& getAttenConst() const;
 	const double& getAttenLinear() const;
 	const double& getAttenQuad() const;
-	char getIsOctTree() const;
+	int getAccelMode() const;
 
 private:
 	RayTracer* raytracer;

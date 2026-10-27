@@ -1,5 +1,4 @@
 #include <cmath>
-#include <assert.h>
 
 #include "Box.h"
 

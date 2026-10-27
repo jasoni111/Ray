@@ -3,12 +3,199 @@
 #include <algorithm>
 #include "scene.h"
 #include "light.h"
-#include "../ui/TraceUI.h"
-extern TraceUI* traceUI;
+
+RenderSettings g_render;
+
+namespace accel
+{
+	const int kLeaf = 4;
+	const int kMaxDepth = 24;
+
+	struct Node
+	{
+		BoundingBox bound;
+		int left = -1;
+		int right = -1;
+		int first = 0;
+		int count = 0;
+	};
+
+	std::vector<Node> nodes;
+	std::vector<Geometry*> prims;
+
+	void clear()
+	{
+		nodes.clear();
+		prims.clear();
+	}
+
+	int longestAxis(const BoundingBox& b)
+	{
+		const vec3f e = b.max - b.min;
+		if (e[0] >= e[1] && e[0] >= e[2])
+			return 0;
+		if (e[1] >= e[2])
+			return 1;
+		return 2;
+	}
+
+	int buildRange(int start, int end, int depth)
+	{
+		Node node;
+		node.bound = prims[start]->getBoundingBox();
+		for (int i = start + 1; i < end; ++i)
+		{
+			const BoundingBox& b = prims[i]->getBoundingBox();
+			node.bound.min = minimum(node.bound.min, b.min);
+			node.bound.max = maximum(node.bound.max, b.max);
+		}
+
+		const int count = end - start;
+		if (count <= kLeaf || depth >= kMaxDepth)
+		{
+			node.first = start;
+			node.count = count;
+			nodes.push_back(node);
+			return static_cast<int>(nodes.size()) - 1;
+		}
+
+		const int axis = longestAxis(node.bound);
+		int mid = (start + end) / 2;
+		std::nth_element(prims.begin() + start, prims.begin() + mid, prims.begin() + end,
+			[axis](Geometry* ga, Geometry* gb)
+			{
+				const BoundingBox& ba = ga->getBoundingBox();
+				const BoundingBox& bb = gb->getBoundingBox();
+				return (ba.min[axis] + ba.max[axis]) < (bb.min[axis] + bb.max[axis]);
+			});
+		if (mid <= start)
+			mid = start + 1;
+		if (mid >= end)
+			mid = end - 1;
+
+		nodes.push_back(Node());
+		const int idx = static_cast<int>(nodes.size()) - 1;
+		const int L = buildRange(start, mid, depth + 1);
+		const int R = buildRange(mid, end, depth + 1);
+		nodes[idx].left = L;
+		nodes[idx].right = R;
+		nodes[idx].count = 0;
+		nodes[idx].bound.min = minimum(nodes[L].bound.min, nodes[R].bound.min);
+		nodes[idx].bound.max = maximum(nodes[L].bound.max, nodes[R].bound.max);
+		return idx;
+	}
+
+	void build(const std::vector<Geometry*>& objs)
+	{
+		clear();
+		if (objs.empty())
+			return;
+		prims = objs;
+		buildRange(0, static_cast<int>(prims.size()), 0);
+	}
+
+	void intersectClosest(const ray& r, isect& closest, bool& have_one, double maxT)
+	{
+		if (nodes.empty())
+			return;
+
+		int stack[64];
+		int sp = 0;
+		stack[sp++] = 0;
+
+		while (sp)
+		{
+			const Node& n = nodes[stack[--sp]];
+			double tmin, tmax;
+			if (!n.bound.intersect(r, tmin, tmax) || tmin > maxT)
+				continue;
+			if (have_one && tmin >= closest.t)
+				continue;
+
+			if (n.count > 0)
+			{
+				for (int i = 0; i < n.count; ++i)
+				{
+					isect cur;
+					if (prims[n.first + i]->intersect(r, cur, maxT) && (!have_one || cur.t < closest.t))
+					{
+						closest = cur;
+						have_one = true;
+						if (closest.t < maxT)
+							maxT = closest.t;
+					}
+				}
+			}
+			else
+			{
+				double t0, T0, t1, T1;
+				const bool h0 = n.left >= 0 && nodes[n.left].bound.intersect(r, t0, T0)
+					&& t0 <= maxT && !(have_one && t0 >= closest.t);
+				const bool h1 = n.right >= 0 && nodes[n.right].bound.intersect(r, t1, T1)
+					&& t1 <= maxT && !(have_one && t1 >= closest.t);
+				if (h0 && h1)
+				{
+					if (t0 > t1)
+					{
+						stack[sp++] = n.left;
+						stack[sp++] = n.right;
+					}
+					else
+					{
+						stack[sp++] = n.right;
+						stack[sp++] = n.left;
+					}
+				}
+				else if (h0)
+					stack[sp++] = n.left;
+				else if (h1)
+					stack[sp++] = n.right;
+			}
+		}
+	}
+
+	bool intersectAny(const ray& r, isect& hit, double maxT)
+	{
+		if (nodes.empty())
+			return false;
+
+		int stack[64];
+		int sp = 0;
+		stack[sp++] = 0;
+
+		while (sp)
+		{
+			const Node& n = nodes[stack[--sp]];
+			double tmin, tmax;
+			if (!n.bound.intersect(r, tmin, tmax) || tmin > maxT)
+				continue;
+
+			if (n.count > 0)
+			{
+				for (int i = 0; i < n.count; ++i)
+				{
+					isect cur;
+					if (prims[n.first + i]->intersect(r, cur, maxT) && cur.t <= maxT)
+					{
+						hit = cur;
+						return true;
+					}
+				}
+			}
+			else
+			{
+				if (n.left >= 0)
+					stack[sp++] = n.left;
+				if (n.right >= 0)
+					stack[sp++] = n.right;
+			}
+		}
+		return false;
+	}
+}
 
 namespace octTree
 {
-	//reference : http://chiranjivi.tripod.com/octrav.html
 	const int cap = 64;
 	const int maxDepth = 12;
 	std::unique_ptr<Octree> root = nullptr;
@@ -21,31 +208,27 @@ namespace octTree
 		isLeaf = false;
 		const auto mid = (max + min) / 2;
 		const int childDepth = depth + 1;
-		child[0] = make_unique<Octree>(min[0], min[1], min[2]
-			, mid[0], mid[1], mid[2], childDepth);
-		child[1] = make_unique<Octree>(min[0], min[1], mid[2]
-			, mid[0], mid[1], max[2], childDepth);
-		child[2] = make_unique<Octree>(min[0], mid[1], min[2]
-			, mid[0], max[1], mid[2], childDepth);
-		child[3] = make_unique<Octree>(min[0], mid[1], mid[2]
-			, mid[0], max[1], max[2], childDepth);
-
-		child[4] = make_unique<Octree>(mid[0], min[1], min[2]
-			, max[0], mid[1], mid[2], childDepth);
-		child[5] = make_unique<Octree>(mid[0], min[1], mid[2]
-			, max[0], mid[1], max[2], childDepth);
-		child[6] = make_unique<Octree>(mid[0], mid[1], min[2]
-			, max[0], max[1], mid[2], childDepth);
-		child[7] = make_unique<Octree>(mid[0], mid[1], mid[2]
-			, max[0], max[1], max[2], childDepth);
+		child[0] = make_unique<Octree>(min[0], min[1], min[2],
+			mid[0], mid[1], mid[2], childDepth);
+		child[1] = make_unique<Octree>(min[0], min[1], mid[2],
+			mid[0], mid[1], max[2], childDepth);
+		child[2] = make_unique<Octree>(min[0], mid[1], min[2],
+			mid[0], max[1], mid[2], childDepth);
+		child[3] = make_unique<Octree>(min[0], mid[1], mid[2],
+			mid[0], max[1], max[2], childDepth);
+		child[4] = make_unique<Octree>(mid[0], min[1], min[2],
+			max[0], mid[1], mid[2], childDepth);
+		child[5] = make_unique<Octree>(mid[0], min[1], mid[2],
+			max[0], mid[1], max[2], childDepth);
+		child[6] = make_unique<Octree>(mid[0], mid[1], min[2],
+			max[0], max[1], mid[2], childDepth);
+		child[7] = make_unique<Octree>(mid[0], mid[1], mid[2],
+			max[0], max[1], max[2], childDepth);
 		std::vector<Geometry*> tempGeometries = std::move(Geometries);
 		Geometries.clear();
 		for (Geometry* G : tempGeometries)
-		{
 			insert(this, G);
-		}
 	}
-
 
 	void Octree::insert(Octree* cur_ptr, Geometry* const& obj)
 	{
@@ -74,30 +257,23 @@ namespace octTree
 		min_rate[0] /= range[0];
 		min_rate[1] /= range[1];
 		min_rate[2] /= range[2];
-
 		max_rate[0] /= range[0];
 		max_rate[1] /= range[1];
 		max_rate[2] /= range[2];
-		if (min_rate[0] <= 0.5 && max_rate[0] >= 0.5
-			|| min_rate[1] <= 0.5 && max_rate[1] >= 0.5
-			|| min_rate[2] <= 0.5 && max_rate[2] >= 0.5)
+		if ((min_rate[0] <= 0.5 && max_rate[0] >= 0.5)
+			|| (min_rate[1] <= 0.5 && max_rate[1] >= 0.5)
+			|| (min_rate[2] <= 0.5 && max_rate[2] >= 0.5))
 		{
 			cur_ptr->Geometries.push_back(obj);
 			return;
 		}
 		int to_add = 0;
 		if (min_rate[0] >= 0.5)
-		{
 			to_add |= 4;
-		}
 		if (min_rate[1] >= 0.5)
-		{
 			to_add |= 2;
-		}
 		if (min_rate[2] >= 0.5)
-		{
 			to_add |= 1;
-		}
 		if (!cur_ptr->child[to_add])
 		{
 			cur_ptr->Geometries.push_back(obj);
@@ -106,25 +282,23 @@ namespace octTree
 		insert(cur_ptr->child[to_add].get(), obj);
 	}
 
-	void constrictOctTree(const list<Geometry*>& objs, const vec3f& min, const vec3f& max)
+	void constrictOctTree(const std::vector<Geometry*>& objs, const vec3f& min, const vec3f& max)
 	{
 		root.reset();
 		if (objs.empty())
 			return;
 		root = make_unique<Octree>(min, max);
 		for (Geometry* obj : objs)
-		{
 			Octree::insert(root.get(), obj);
-		}
 	}
 
-	void intersectTree(Octree* node, const ray& r, isect& closest, bool& have_one)
+	void intersectTree(Octree* node, const ray& r, isect& closest, bool& have_one, double maxT, bool anyHit)
 	{
 		if (!node)
 			return;
 
 		double tmin, tmax;
-		if (!node->bound.intersect(r, tmin, tmax))
+		if (!node->bound.intersect(r, tmin, tmax) || tmin > maxT)
 			return;
 		if (have_one && tmin >= closest.t)
 			return;
@@ -132,178 +306,27 @@ namespace octTree
 		for (Geometry* geometry : node->Geometries)
 		{
 			isect cur;
-			if (geometry->intersect(r, cur) && (!have_one || cur.t < closest.t))
+			if (geometry->intersect(r, cur, maxT) && (!have_one || cur.t < closest.t))
 			{
 				closest = cur;
 				have_one = true;
+				if (anyHit)
+					return;
+				if (closest.t < maxT)
+					maxT = closest.t;
 			}
 		}
 
 		if (!node->isLeaf)
 		{
 			for (int i = 0; i < 8; ++i)
-				intersectTree(node->child[i].get(), r, closest, have_one);
+			{
+				intersectTree(node->child[i].get(), r, closest, have_one, maxT, anyHit);
+				if (anyHit && have_one)
+					return;
+			}
 		}
 	}
-
-
-	// void proc_subtree(const float& tx0, const float& ty0, const float& tz0,
-	//                   const float& tx1, const float& ty1, const float& tz1,
-	//                   octree* n);
-	//
-	// void ray_step(octree* root, ray r, const vec3f& min, const vec3f& max)
-	// {
-	// 	a = 0;
-	// 	auto dir = r.getDirection();
-	// 	auto& dx = dir[0];
-	// 	auto& dy = dir[1];
-	// 	auto& dz = dir[2];
-	// 	auto pos = r.getPosition();
-	// 	auto size = max - min;
-	//
-	// 	if (dx < 0)
-	// 	{
-	// 		pos[0] = size[0] - pos[0];
-	// 		dx = -dx;
-	// 		a |= 4;
-	// 	}
-	// 	if (dy < 0)
-	// 	{
-	// 		pos[1] = size[1] - pos[1];
-	// 		dy = -dy;
-	// 		a |= 2;
-	// 	}
-	// 	if (dz < 0)
-	// 	{
-	// 		pos[2] = size[2] - pos[2];
-	// 		dz = -dz;
-	// 		a |= 1;
-	// 	}
-	//
-	// 	const auto tx0 = (min[0] - pos[0]) / dx;
-	// 	const auto tx1 = (max[0] - pos[0]) / dx;
-	// 	const auto ty0 = (min[1] - pos[1]) / dy;
-	// 	const auto ty1 = (max[1] - pos[1]) / dy;
-	// 	const auto tz0 = (min[2] - pos[2]) / dz;
-	// 	const auto tz1 = (max[2] - pos[2]) / dz;
-	//
-	// 	const float tmin = std::max(std::max(tx0, ty0), tz0);
-	// 	const float tmax = std::min(std::min(tx1, ty1), tz1);
-	//
-	// 	if ((tmin < tmax) && (tmax > 0.0f))
-	// 		proc_subtree(tx0, ty0, tz0, tx1, ty1, tz1, root);
-	// }
-	//
-	// inline int find_firstNode(const float& tx0, const float& ty0, const float& tz0,
-	//                           const float& txM, const float& tyM, const float& tzM)
-	// {
-	// 	int to_return = 0;
-	// 	if (txM < tz0)
-	// 	{
-	// 		to_return |= 4;
-	// 	}
-	// 	if (tyM < tz0)
-	// 	{
-	// 		to_return |= 2;
-	// 	}
-	//
-	// 	if (tyM < tx0)
-	// 	{
-	// 		to_return |= 2;
-	// 	}
-	// 	if (tzM < tx0)
-	// 	{
-	// 		to_return |= 1;
-	// 	}
-	//
-	// 	if (txM < ty0)
-	// 	{
-	// 		to_return |= 4;
-	// 	}
-	// 	if (tzM < ty0)
-	// 	{
-	// 		to_return |= 1;
-	// 	}
-	//
-	// 	return to_return;
-	// }
-	//
-	// inline int next_Node(float a, float b, float c, int f, int s, int t)
-	// {
-	// 	if (a >= b && a >= c)
-	// 	{
-	// 		return f;
-	// 	}
-	// 	if (b >= c)
-	// 	{
-	// 		return s;
-	// 	}
-	// 	return t;
-	// }
-	//
-	// void proc_subtree(const float& tx0, const float& ty0, const float& tz0,
-	//                   const float& tx1, const float& ty1, const float& tz1,
-	//                   octree* n)
-	// {
-	// 	int currNode;
-	//
-	// 	if ((tx1 <= 0.0f) || (ty1 <= 0.0f) || (tz1 <= 0.0f))
-	// 		return;
-	//
-	// 	if (n->isLeaf)
-	// 	{
-	// 		addToList(n);
-	// 		return;
-	// 	}
-	//
-	// 	float txM = 0.5 * (tx0 + tx1);
-	// 	float tyM = 0.5 * (ty0 + ty1);
-	// 	float tzM = 0.5 * (tz0 + tz1);
-	//
-	// 	// Determining the first node requires knowing which of the t0's is the largest...
-	// 	// as well as comparing the tM's of the other axes against that largest t0.
-	// 	// Hence, the function should only require the 3 t0-values and the 3 tM-values.
-	// 	currNode = find_firstNode(tx0, ty0, tz0, txM, tyM, tzM);
-	//
-	// 	do
-	// 	{
-	// 		// next_Node() takes the t1 values for a child (which may or may not have tM's of the parent)
-	// 		// and determines the next node.  Rather than passing in the currNode value, we pass in possible values
-	// 		// for the next node.  A value of 8 refers to an exit from the parent.
-	// 		// While having more parameters does use more stack bandwidth, it allows for a smaller function
-	// 		// with fewer branches and less redundant code.  The possibilities for the next node are passed in
-	// 		// the same respective order as the t-values.  Hence if the first parameter is found as the greatest, the
-	// 		// fourth parameter will be the return value.  If the 2nd parameter is the greatest, the 5th will be returned, etc.
-	// 		switch (currNode)
-	// 		{
-	// 		case 0: proc_subtree(tx0, ty0, tz0, txM, tyM, tzM, n->child[a].get());
-	// 			currNode = next_Node(txM, tyM, tzM, 4, 2, 1);
-	// 			break;
-	// 		case 1: proc_subtree(tx0, ty0, tzM, txM, tyM, tz1, n->child[1 ^ a].get());
-	// 			currNode = next_Node(txM, tyM, tz1, 5, 3, 8);
-	// 			break;
-	// 		case 2: proc_subtree(tx0, tyM, tz0, txM, ty1, tzM, n->child[2 ^ a].get());
-	// 			currNode = next_Node(txM, ty1, tzM, 6, 8, 3);
-	// 			break;
-	// 		case 3: proc_subtree(tx0, tyM, tzM, txM, ty1, tz1, n->child[3 ^ a].get());
-	// 			currNode = next_Node(txM, ty1, tz1, 7, 8, 8);
-	// 			break;
-	// 		case 4: proc_subtree(txM, ty0, tz0, tx1, tyM, tzM, n->child[4 ^ a].get());
-	// 			currNode = next_Node(tx1, tyM, tzM, 8, 6, 5);
-	// 			break;
-	// 		case 5: proc_subtree(txM, ty0, tzM, tx1, tyM, tz1, n->child[5 ^ a].get());
-	// 			currNode = next_Node(tx1, tyM, tz1, 8, 7, 8);
-	// 			break;
-	// 		case 6: proc_subtree(txM, tyM, tz0, tx1, ty1, tzM, n->child[6 ^ a].get());
-	// 			currNode = next_Node(tx1, ty1, tzM, 8, 8, 7);
-	// 			break;
-	// 		case 7: proc_subtree(txM, txM, tzM, tx1, ty1, tz1, n->child[7].get());
-	// 			currNode = 8;
-	// 			break;
-	// 		}
-	// 	}
-	// 	while (currNode < 8);
-	// }
 }
 
 
@@ -335,17 +358,17 @@ bool BoundingBox::intersects(const vec3f& point) const
 // Using Kay/Kajiya algorithm.
 bool BoundingBox::intersect(const ray& r, double& tMin, double& tMax) const
 {
-	vec3f R0 = r.getPosition();
-	vec3f Rd = r.getDirection();
+	const vec3f& R0 = r.getPosition();
+	const vec3f& Rd = r.getDirection();
+	const vec3f& inv = r.getInvDirection();
 
-	tMin = -1.0e308; // 1.0e308 is close to infinity... close enough for us!
+	tMin = -1.0e308;
 	tMax = 1.0e308;
 
 	for (int currentaxis = 0; currentaxis < 3; currentaxis++)
 	{
-		double vd = Rd[currentaxis];
+		const double vd = Rd[currentaxis];
 
-		// if the ray is parallel to the face's plane (=0.0)
 		if (vd == 0.0)
 		{
 			if (R0[currentaxis] < min[currentaxis] - RAY_EPSILON ||
@@ -354,62 +377,58 @@ bool BoundingBox::intersect(const ray& r, double& tMin, double& tMax) const
 			continue;
 		}
 
-		double v1 = (min[currentaxis] - RAY_EPSILON) - R0[currentaxis];
-		double v2 = (max[currentaxis] + RAY_EPSILON) - R0[currentaxis];
-
-		// two slab intersections
-		double t1 = v1 / vd;
-		double t2 = v2 / vd;
-
+		double t1 = ((min[currentaxis] - RAY_EPSILON) - R0[currentaxis]) * inv[currentaxis];
+		double t2 = ((max[currentaxis] + RAY_EPSILON) - R0[currentaxis]) * inv[currentaxis];
 		if (t1 > t2)
 		{
-			std::swap(t1, t2);
+			const double tmp = t1;
+			t1 = t2;
+			t2 = tmp;
 		}
-		tMin = std::max(t1, tMin);
-		tMax = std::min(t2, tMax);
+		if (t1 > tMin)
+			tMin = t1;
+		if (t2 < tMax)
+			tMax = t2;
 
-		if (tMin > tMax + RAY_EPSILON) // box is missed
+		if (tMin > tMax + RAY_EPSILON)
 			return false;
-		if (tMax < -RAY_EPSILON) // box is behind ray
+		if (tMax < -RAY_EPSILON)
 			return false;
 	}
-	return true; // it made it past all 3 axes.
+	return true;
 }
 
 
-bool Geometry::intersect(const ray& r, isect& i) const
+bool Geometry::intersect(const ray& r, isect& i, double maxT) const
 {
 	if (hasBoundingBoxCapability())
 	{
 		double tmin, tmax;
-		if (!bounds.intersect(r, tmin, tmax))
+		if (!bounds.intersect(r, tmin, tmax) || tmin > maxT)
 			return false;
 	}
 
-	i.setMaterial(nullptr);
+	if (identityTransform || worldSpace)
+	{
+		if (!intersectLocal(r, i))
+			return false;
+		return i.t <= maxT;
+	}
 
-	// Transform the ray into the object's local coordinate space
-	vec3f pos = transform->globalToLocalCoords(r.getPosition());
+	const vec3f pos = transform->globalToLocalCoords(r.getPosition());
 	vec3f dir = transform->globalToLocalCoords(r.getPosition() + r.getDirection()) - pos;
-	double length = dir.length();
+	const double length = dir.length();
 	if (length < RAY_EPSILON)
 		return false;
 	dir /= length;
 
 	ray localRay(pos, dir);
-
-	if (intersectLocal(localRay, i))
-	{
-		// Transform the intersection point & normal returned back into global space.
-		i.N = transform->localToGlobalCoordsNormal(i.N);
-		i.t /= length;
-
-		return true;
-	}
-	else
-	{
+	if (!intersectLocal(localRay, i))
 		return false;
-	}
+
+	i.N = transform->localToGlobalCoordsNormal(i.N);
+	i.t /= length;
+	return i.t <= maxT;
 }
 
 bool Geometry::intersectLocal(const ray& r, isect& i) const
@@ -433,7 +452,7 @@ bool Geometry::hasBoundingBoxCapability() const
 
 Scene::~Scene()
 {
-	octTree::root.reset();
+	accel::clear();
 
 	for (Geometry* g : objects) {
 		delete g;
@@ -447,37 +466,61 @@ Scene::~Scene()
 	lights.clear();
 }
 
-// Get any intersection with an object.  Return information about the 
-// intersection through the reference parameter.
-bool Scene::intersect(const ray& r, isect& i) const
+bool Scene::intersect(const ray& r, isect& i, double maxT, bool anyHit) const
 {
 	bool have_one = false;
 
-	if (traceUI->getIsOctTree() && octTree::root)
+	if (g_render.accel == AccelBVH && !accel::nodes.empty())
 	{
-		octTree::intersectTree(octTree::root.get(), r, i, have_one);
+		if (anyHit)
+		{
+			have_one = accel::intersectAny(r, i, maxT);
+			if (have_one && nonboundedobjects.empty())
+				return true;
+		}
+		else
+		{
+			accel::intersectClosest(r, i, have_one, maxT);
+			if (have_one)
+				maxT = i.t;
+		}
+	}
+	else if (g_render.accel == AccelOctree && octTree::root)
+	{
+		octTree::intersectTree(octTree::root.get(), r, i, have_one, maxT, anyHit);
+		if (have_one)
+		{
+			maxT = i.t;
+			if (anyHit && nonboundedobjects.empty())
+				return true;
+		}
 	}
 	else
 	{
 		for (Geometry* geometry : boundedobjects)
 		{
 			isect cur;
-			if (geometry->intersect(r, cur) && (!have_one || cur.t < i.t))
+			if (geometry->intersect(r, cur, maxT) && (!have_one || cur.t < i.t))
 			{
 				i = cur;
 				have_one = true;
+				if (anyHit)
+					return true;
+				maxT = i.t;
 			}
 		}
 	}
 
-	// try the non-bounded objects
 	for (Geometry* geometry : nonboundedobjects)
 	{
 		isect cur;
-		if (geometry->intersect(r, cur) && (!have_one || cur.t < i.t))
+		if (geometry->intersect(r, cur, maxT) && (!have_one || cur.t < i.t))
 		{
 			i = cur;
 			have_one = true;
+			if (anyHit)
+				return true;
+			maxT = i.t;
 		}
 	}
 
@@ -488,16 +531,18 @@ void Scene::initScene()
 {
 	boundedobjects.clear();
 	nonboundedobjects.clear();
+	hasTransparent = false;
 	bool first_boundedobject = true;
 
-	// split the objects into two categories: bounded and non-bounded
 	for (Geometry* object : objects)
 	{
+		if (object->isTransparent())
+			hasTransparent = true;
+
 		if (object->hasBoundingBoxCapability())
 		{
 			boundedobjects.push_back(object);
 
-			// widen the scene's bounding box, if necessary
 			if (first_boundedobject)
 			{
 				sceneBounds = object->getBoundingBox();
@@ -516,7 +561,13 @@ void Scene::initScene()
 	}
 
 	if (!boundedobjects.empty())
+	{
+		accel::build(boundedobjects);
 		octTree::constrictOctTree(boundedobjects, sceneBounds.min, sceneBounds.max);
+	}
 	else
+	{
+		accel::clear();
 		octTree::root.reset();
+	}
 }

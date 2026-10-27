@@ -2,14 +2,7 @@
 #include <cmath>
 
 #include "light.h"
-
-#include <vector>
-
-#include "../ui/TraceUI.h"
 #include "ray.h"
-
-
-extern TraceUI* traceUI;
 
 namespace
 {
@@ -20,6 +13,7 @@ namespace
 		vec3f origin = P;
 		double remaining = maxT;
 		vec3f atten = lightColor;
+		const bool anyHit = !scene->hasTransparentObjects();
 
 		for (int hop = 0; hop < 8; ++hop)
 		{
@@ -28,10 +22,14 @@ namespace
 
 			const ray r(origin + dir * RAY_EPSILON, dir);
 			isect i;
-			if (!scene->intersect(r, i) || i.t > remaining)
+			if (!scene->intersect(r, i, remaining, anyHit) || i.t > remaining)
 				return atten;
 
-			const Material& m = i.getMaterial();
+			if (anyHit)
+				return vec3f(0.0, 0.0, 0.0);
+
+			Material scratch;
+			const Material& m = i.getMaterial(scratch);
 			if (m.kt.iszero())
 				return vec3f(0.0, 0.0, 0.0);
 
@@ -56,13 +54,12 @@ vec3f DirectionalLight::shadowAttenuation(const vec3f& P) const
 	const vec3f d = getDirection(P);
 	vec3f ret = shadowAlongRay(getScene(), P, d, kDirectionalShadowT, color);
 
-	if (traceUI->m_softShadow->value())
+	if (g_render.softShadow)
 	{
-		auto sampleVecs = helperFun::sampleRay(d, 0.05, 20);
-		for (const auto& sampleVec : sampleVecs)
-		{
-			ret += shadowAlongRay(getScene(), P, sampleVec, kDirectionalShadowT, color);
-		}
+		vec3f sampleVecs[20];
+		helperFun::sampleRay(d, 0.05, 20, sampleVecs);
+		for (int s = 0; s < 20; ++s)
+			ret += shadowAlongRay(getScene(), P, sampleVecs[s], kDirectionalShadowT, color);
 		ret /= 21;
 	}
 
@@ -92,7 +89,7 @@ double PointLight::distanceAttenuation(const vec3f& P) const
 	// double a = pScene->distAtteA, b = pScene->distAtteB, c = pScene->distAtteC;
 	// double ret = 1.0 / (a + b * d + c * d * d);
 	// return std::min(1.0, ret);
-	double ret = 1.0 / (traceUI->getAttenConst() + traceUI->getAttenLinear() * d + traceUI->getAttenQuad() * d * d);
+	double ret = 1.0 / (g_render.attenConst + g_render.attenLinear * d + g_render.attenQuad * d * d);
 
 
 	return std::min(1.0, ret);
@@ -120,18 +117,19 @@ vec3f PointLight::shadowAttenuation(const vec3f& P) const
 	const vec3f d = toLight / dist;
 	vec3f ret = shadowAlongRay(getScene(), P, d, dist, color);
 
-	if (traceUI->m_softShadow->value())
+	if (g_render.softShadow)
 	{
-		auto sampleVecs = helperFun::sampleRay(d, 0.05, 20);
-		for (const auto& sampleVec : sampleVecs)
+		vec3f sampleVecs[20];
+		helperFun::sampleRay(d, 0.05, 20, sampleVecs);
+		for (int s = 0; s < 20; ++s)
 		{
-			const double denom = sampleVec.dot(d);
+			const double denom = sampleVecs[s].dot(d);
 			if (denom < RAY_EPSILON)
 			{
 				ret += color;
 				continue;
 			}
-			ret += shadowAlongRay(getScene(), P, sampleVec, dist / denom, color);
+			ret += shadowAlongRay(getScene(), P, sampleVecs[s], dist / denom, color);
 		}
 		ret /= 21;
 	}

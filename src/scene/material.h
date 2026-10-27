@@ -34,10 +34,10 @@ public:
         : ke( e ), ka( a ), ks( s ), kd( d ), kr( r ), kt( t ), shininess( sh ), index( in ), id(nextMaterialId()) {}
 
 	virtual vec3f shade( Scene *scene, const ray& r, const isect& i, 
-        bool& use_texture, const vec3f& diffuse_color,
-        bool& use_emissionMap, const vec3f& emission_color,
-        bool& use_opacityMap, const vec3f& opacity_color,
-        bool& use_specularMap, const vec3f specular_map
+        bool use_texture, const vec3f& diffuse_color,
+        bool use_emissionMap, const vec3f& emission_color,
+        bool use_opacityMap, const vec3f& opacity_color,
+        bool use_specularMap, const vec3f& specular_map
         ) const;
 
     vec3f ke;                    // emissive

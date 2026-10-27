@@ -6,7 +6,7 @@ Texture::Texture() {
 	map_width = 0;
 }
 
-vec3f Texture::getColor(const double &u, const double &v) {
+vec3f Texture::getColor(const double &u, const double &v) const {
 	if (!pMap || map_width <= 0 || map_height <= 0)
 		return vec3f(1, 1, 1);
 	int x = int(u * map_width);

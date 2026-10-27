@@ -6,7 +6,7 @@ class Texture
 {
 public:
 	Texture();
-	vec3f getColor(const double &u, const double &v);
+	vec3f getColor(const double &u, const double &v) const;
 	void loadMap(const char* p);
 	
 	int map_width, map_height;
