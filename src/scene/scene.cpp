@@ -536,8 +536,13 @@ void Scene::initScene()
 
 	for (Geometry* object : objects)
 	{
+		object->prepareForTrace();
+
 		if (object->isTransparent())
 			hasTransparent = true;
+
+		if (!object->isIntersectable())
+			continue;
 
 		if (object->hasBoundingBoxCapability())
 		{

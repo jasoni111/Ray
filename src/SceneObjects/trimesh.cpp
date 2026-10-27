@@ -53,12 +53,6 @@ Trimesh::doubleCheck()
 	return 0;
 }
 
-// Intersect ray r with the triangle abc.  If it hits returns true,
-// and put the parameter in t and the barycentric coordinates of the
-// intersection in bary.
-// Uses the algorithm and notation from _Graphic Gems 5_, p. 232.
-//
-// Calculates and returns the normal of the triangle too.
 bool TrimeshFace::isTransparent() const
 {
 	if (material && !material->kt.iszero())
@@ -72,6 +66,23 @@ bool TrimeshFace::isTransparent() const
 		}
 	}
 	return false;
+}
+
+void TrimeshFace::cacheShadingAttributes()
+{
+	hasVNorm = parent && !parent->normals.empty();
+	if (hasVNorm)
+	{
+		wn0 = transform->localToGlobalCoordsNormal(parent->normals[ids[0]]);
+		wn1 = transform->localToGlobalCoordsNormal(parent->normals[ids[1]]);
+		wn2 = transform->localToGlobalCoordsNormal(parent->normals[ids[2]]);
+	}
+	hasVMat = parent && !parent->materials.empty();
+}
+
+void TrimeshFace::prepareForTrace()
+{
+	cacheShadingAttributes();
 }
 
 bool TrimeshFace::intersectLocal(const ray& r, isect& i) const

@@ -184,6 +184,8 @@ public:
 
 	virtual bool hasBoundingBoxCapability() const;
 	virtual bool isTransparent() const { return false; }
+	virtual bool isIntersectable() const { return true; }
+	virtual void prepareForTrace() {}
 	const BoundingBox& getBoundingBox() const { return bounds; }
 
 	virtual void ComputeBoundingBox()

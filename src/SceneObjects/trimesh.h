@@ -38,6 +38,7 @@ public:
     char *doubleCheck();
     
     void generateNormals();
+    virtual bool isIntersectable() const { return false; }
 };
 
 class TrimeshFace : public MaterialSceneObject
@@ -68,6 +69,8 @@ public:
 
     virtual bool hasBoundingBoxCapability() const { return true; }
     virtual bool isTransparent() const;
+    virtual void prepareForTrace();
+    void cacheShadingAttributes();
 
     virtual void ComputeBoundingBox()
     {
@@ -86,15 +89,6 @@ public:
         if (!degenerate)
             faceN = cv.normalize();
         worldSpace = true;
-
-        hasVNorm = !parent->normals.empty();
-        if (hasVNorm)
-        {
-            wn0 = transform->localToGlobalCoordsNormal(parent->normals[ids[0]]);
-            wn1 = transform->localToGlobalCoordsNormal(parent->normals[ids[1]]);
-            wn2 = transform->localToGlobalCoordsNormal(parent->normals[ids[2]]);
-        }
-        hasVMat = !parent->materials.empty();
     }
       
     virtual BoundingBox ComputeLocalBoundingBox()
