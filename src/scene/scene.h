@@ -10,6 +10,8 @@
 
 #include <list>
 #include <algorithm>
+#include <memory>
+#include <vector>
 
 using namespace std;
 
@@ -315,25 +317,25 @@ namespace octTree
 		void split();
 
 		bool isLeaf;
+		int depth;
 		std::unique_ptr<Octree> child[8];
 		std::vector<Geometry*> Geometries;
 		BoundingBox bound;
 
 		Octree() = delete;
 
-		Octree(vec3f _min, vec3f _max) : isLeaf(true)
+		Octree(vec3f _min, vec3f _max, int _depth = 0) : isLeaf(true), depth(_depth)
 		{
 			bound.min = _min;
 			bound.max = _max;
 		}
 
 		Octree(float _minx, float _miny, float _minz,
-			float _maxx, float _maxy, float _maxz)
-			: isLeaf(true)
+			float _maxx, float _maxy, float _maxz, int _depth = 0)
+			: isLeaf(true), depth(_depth)
 		{
 			bound.min = vec3f{ _minx,_miny,_minz };
 			bound.max = vec3f{ _maxx,_maxy,_maxz };
-
 		}
 
 	};

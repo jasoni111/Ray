@@ -1,5 +1,4 @@
 #include <cmath>
-#include <float.h>
 #include "trimesh.h"
 
 Trimesh::~Trimesh()
@@ -94,11 +93,11 @@ bool TrimeshFace::intersectLocal(const ray& r, isect& i) const
 
 	// find k where k is the index of the component
 	// of normal vector with greatest absolute value
-	float greatestMag = FLT_MIN;
-	int k = -1;
+	double greatestMag = -1.0;
+	int k = 0;
 	for (int j = 0; j < 3; ++j)
 	{
-		float val = static_cast<float>(abs(n[j]));
+		const double val = std::fabs(n[j]);
 		if (val > greatestMag)
 		{
 			k = j;

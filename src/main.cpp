@@ -159,7 +159,12 @@ int main(int argc, char** argv) {
 			exit(1);
 		}
 
+		// Extra-credit features read settings from the FLTK widgets, so the
+		// UI must exist even when we never show a window.
+		traceUI = new TraceUI();
 		theRayTracer = new RayTracer();
+		traceUI->setRayTracer(theRayTracer);
+		theRayTracer->max_depth = recursion_depth;
 		theRayTracer->loadScene(rayName);
 
 		if (theRayTracer->sceneLoaded()) {

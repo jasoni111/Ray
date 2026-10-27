@@ -3,7 +3,6 @@
 
 #include "light.h"
 
-#include <ppl.h>
 #include <vector>
 
 #include "../ui/TraceUI.h"
@@ -11,6 +10,38 @@
 
 
 extern TraceUI* traceUI;
+
+namespace
+{
+	const double kDirectionalShadowT = 1.0e308;
+
+	vec3f shadowAlongRay(Scene* scene, const vec3f& P, const vec3f& dir, double maxT, const vec3f& lightColor)
+	{
+		vec3f origin = P;
+		double remaining = maxT;
+		vec3f atten = lightColor;
+
+		for (int hop = 0; hop < 8; ++hop)
+		{
+			if (remaining <= RAY_EPSILON)
+				return atten;
+
+			const ray r(origin + dir * RAY_EPSILON, dir);
+			isect i;
+			if (!scene->intersect(r, i) || i.t > remaining)
+				return atten;
+
+			const Material& m = i.getMaterial();
+			if (m.kt.iszero())
+				return vec3f(0.0, 0.0, 0.0);
+
+			atten = prod(atten, m.kt);
+			origin = r.at(i.t);
+			remaining -= i.t;
+		}
+		return atten;
+	}
+}
 
 
 double DirectionalLight::distanceAttenuation(const vec3f& P) const
@@ -22,48 +53,16 @@ double DirectionalLight::distanceAttenuation(const vec3f& P) const
 
 vec3f DirectionalLight::shadowAttenuation(const vec3f& P) const
 {
-	// YOUR CODE HERE:
-	// You should implement shadow-handling code here.
+	const vec3f d = getDirection(P);
+	vec3f ret = shadowAlongRay(getScene(), P, d, kDirectionalShadowT, color);
 
-	vec3f d = getDirection(P);
-	isect i;
-	ray r(P, d);
-	vec3f ret = color;
-
-	if (this->getScene()->intersect(r, i))
-	{
-		ret = prod(color, i.getMaterial().kt);
-	}
-	const auto isSoftShadow = traceUI->m_softShadow->value();
-	if (isSoftShadow)
+	if (traceUI->m_softShadow->value())
 	{
 		auto sampleVecs = helperFun::sampleRay(d, 0.05, 20);
 		for (const auto& sampleVec : sampleVecs)
 		{
-			isect i;
-			if (scene->intersect(ray{P, sampleVec}, i))
-			{
-				ret += prod(color, i.getMaterial().kt);
-			}
-			else
-			{
-				ret += color;
-			}
+			ret += shadowAlongRay(getScene(), P, sampleVec, kDirectionalShadowT, color);
 		}
-		// Concurrency::parallel_for_each(sampleVecs.begin(), sampleVecs.end(),
-		//                                [&](const vec3f& sampleVec)
-		//                                {
-		// 	                               isect i;
-		// 	                               if (scene->intersect(ray{P, sampleVec}, i))
-		// 	                               {
-		// 		                               ret += prod(color, i.getMaterial().kt);
-		// 	                               }
-		// 	                               else
-		// 	                               {
-		// 		                               ret += color;
-		// 	                               }
-		//                                }
-		// );
 		ret /= 21;
 	}
 
@@ -113,30 +112,26 @@ vec3f PointLight::getDirection(const vec3f& P) const
 
 vec3f PointLight::shadowAttenuation(const vec3f& P) const
 {
-	const auto d = getDirection(P);
-	isect i;
-	ray r(P, d);
-	auto ret = color;
+	const vec3f toLight = position - P;
+	const double dist = toLight.length();
+	if (dist < RAY_EPSILON)
+		return color;
 
-	if (this->getScene()->intersect(r, i))
-	{
-		ret = prod(color, i.getMaterial().kt);
-	}
-	const auto isSoftShadow = false;
-	if (isSoftShadow)
+	const vec3f d = toLight / dist;
+	vec3f ret = shadowAlongRay(getScene(), P, d, dist, color);
+
+	if (traceUI->m_softShadow->value())
 	{
 		auto sampleVecs = helperFun::sampleRay(d, 0.05, 20);
 		for (const auto& sampleVec : sampleVecs)
 		{
-			isect i;
-			if (scene->intersect(ray{ P, sampleVec }, i))
-			{
-				ret += prod(color, i.getMaterial().kt);
-			}
-			else
+			const double denom = sampleVec.dot(d);
+			if (denom < RAY_EPSILON)
 			{
 				ret += color;
+				continue;
 			}
+			ret += shadowAlongRay(getScene(), P, sampleVec, dist / denom, color);
 		}
 		ret /= 21;
 	}

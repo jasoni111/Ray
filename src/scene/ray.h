@@ -49,7 +49,15 @@ class isect
 {
 public:
 	isect()
-		: obj(nullptr), t(0.0), N(), material(0) {}
+		: obj(nullptr), t(0.0), N(), material(0), i_box_x(0.0), i_box_y(0.0) {}
+
+	isect(const isect& other)
+		: obj(other.obj), t(other.t), N(other.N), material(0),
+		  i_box_x(other.i_box_x), i_box_y(other.i_box_y)
+	{
+		if (other.material)
+			material = new Material(*other.material);
+	}
 
 	~isect()
 	{
@@ -80,6 +88,7 @@ public:
 			}
 			else
 			{
+				delete material;
 				material = 0;
 			}
 		}
@@ -108,7 +117,7 @@ const double NORMAL_EPSILON = 0.00001;
 
 namespace helperFun
 {
-	double inline getRand(double r);
+	double getRand(double r);
 	std::vector<vec3f> sampleRay(vec3f rayVec, double r, int num_sample);
 }
 

@@ -16,14 +16,18 @@ bool Box::intersectLocal( const ray& r, isect& i ) const
 	box.min = vec3f(-0.5, -0.5, -0.5);
 	if (!box.intersect(r, tMin, tMax))
 		return false;
-	if (tMin < RAY_EPSILON || tMax < RAY_EPSILON || abs(tMax - tMin) < RAY_EPSILON)
+	if (tMax < RAY_EPSILON)
+		return false;
+
+	const double t = (tMin >= RAY_EPSILON) ? tMin : tMax;
+	if (t < RAY_EPSILON)
 		return false;
 
 	i.obj = this;
-	i.t = tMin;
+	i.t = t;
 
 	i.N = vec3f(0, 0, 0);
-	vec3f pos = r.at(tMin);
+	vec3f pos = r.at(t);
 	for (int j = 0; j < 3; ++j) {
 		if (abs(abs(pos[j]) - 0.5) < RAY_EPSILON) {
 			i.N[j] = pos[j] > 0 ? 1 : -1;

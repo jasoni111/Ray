@@ -183,6 +183,7 @@ void TraceUI::cb_render(Fl_Widget* o, void* v)
 		pUI->m_traceGlWindow->show();
 
 		pUI->raytracer->traceSetup(width, height);
+		pUI->raytracer->max_depth = pUI->getDepth();
 
 		// Save the window label
 		const char* old_label = pUI->m_traceGlWindow->label();
@@ -219,7 +220,6 @@ void TraceUI::cb_render(Fl_Widget* o, void* v)
 					}
 				}
 
-				pUI->raytracer->max_depth = pUI->getDepth();
 				pUI->raytracer->tracePixel(x, y);
 
 			}

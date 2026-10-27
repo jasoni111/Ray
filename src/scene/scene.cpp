@@ -4,15 +4,13 @@
 #include "scene.h"
 #include "light.h"
 #include "../ui/TraceUI.h"
-#include <array>
-#include <cassert>
 extern TraceUI* traceUI;
 
 namespace octTree
 {
 	//reference : http://chiranjivi.tripod.com/octrav.html
 	const int cap = 64;
-	//TODO: something is wrong with the octree
+	const int maxDepth = 12;
 	std::unique_ptr<Octree> root = nullptr;
 
 	void Octree::split()
@@ -22,26 +20,27 @@ namespace octTree
 
 		isLeaf = false;
 		const auto mid = (max + min) / 2;
+		const int childDepth = depth + 1;
 		child[0] = make_unique<Octree>(min[0], min[1], min[2]
-			, mid[0], mid[1], mid[2]);
+			, mid[0], mid[1], mid[2], childDepth);
 		child[1] = make_unique<Octree>(min[0], min[1], mid[2]
-			, mid[0], mid[1], max[2]);
+			, mid[0], mid[1], max[2], childDepth);
 		child[2] = make_unique<Octree>(min[0], mid[1], min[2]
-			, mid[0], max[1], mid[2]);
+			, mid[0], max[1], mid[2], childDepth);
 		child[3] = make_unique<Octree>(min[0], mid[1], mid[2]
-			, mid[0], max[1], max[2]);
+			, mid[0], max[1], max[2], childDepth);
 
 		child[4] = make_unique<Octree>(mid[0], min[1], min[2]
-			, max[0], mid[1], mid[2]);
+			, max[0], mid[1], mid[2], childDepth);
 		child[5] = make_unique<Octree>(mid[0], min[1], mid[2]
-			, max[0], mid[1], max[2]);
+			, max[0], mid[1], max[2], childDepth);
 		child[6] = make_unique<Octree>(mid[0], mid[1], min[2]
-			, max[0], max[1], mid[2]);
+			, max[0], max[1], mid[2], childDepth);
 		child[7] = make_unique<Octree>(mid[0], mid[1], mid[2]
-			, max[0], max[1], max[2]);
-		auto&& tempGeometries = std::move(Geometries);
+			, max[0], max[1], max[2], childDepth);
+		std::vector<Geometry*> tempGeometries = std::move(Geometries);
 		Geometries.clear();
-		for (auto G : tempGeometries)
+		for (Geometry* G : tempGeometries)
 		{
 			insert(this, G);
 		}
@@ -52,16 +51,12 @@ namespace octTree
 	{
 		if (cur_ptr->isLeaf)
 		{
-			//just adding, no problem
-			if (cur_ptr->Geometries.size() < cap)
+			if (cur_ptr->Geometries.size() < cap || cur_ptr->depth >= maxDepth)
 			{
 				cur_ptr->Geometries.push_back(obj);
 				return;
 			}
-			//split
-			{
-				cur_ptr->split();
-			}
+			cur_ptr->split();
 		}
 
 		const auto& max = cur_ptr->bound.max;
@@ -71,6 +66,11 @@ namespace octTree
 		auto min_rate = (objBound.min - min);
 		auto max_rate = (objBound.max - min);
 		auto range = (max - min);
+		if (range[0] < RAY_EPSILON || range[1] < RAY_EPSILON || range[2] < RAY_EPSILON)
+		{
+			cur_ptr->Geometries.push_back(obj);
+			return;
+		}
 		min_rate[0] /= range[0];
 		min_rate[1] /= range[1];
 		min_rate[2] /= range[2];
@@ -86,52 +86,64 @@ namespace octTree
 			return;
 		}
 		int to_add = 0;
-		if (max_rate[0] >= 0.5)
+		if (min_rate[0] >= 0.5)
 		{
 			to_add |= 4;
 		}
-		if (max_rate[2] >= 0.5)
+		if (min_rate[1] >= 0.5)
 		{
 			to_add |= 2;
 		}
-		if (max_rate[3] >= 0.5)
+		if (min_rate[2] >= 0.5)
 		{
 			to_add |= 1;
 		}
+		if (!cur_ptr->child[to_add])
+		{
+			cur_ptr->Geometries.push_back(obj);
+			return;
+		}
 		insert(cur_ptr->child[to_add].get(), obj);
-		return;
 	}
 
-	void constrictOctTree(list<Geometry*> objs, vec3f min, vec3f max)
+	void constrictOctTree(const list<Geometry*>& objs, const vec3f& min, const vec3f& max)
 	{
-		static auto num_init = 0;
-		if (!root)
-		{
-			assert(num_init++ < 1);
-			root = make_unique<Octree>(min, max);
-		}
-		for (const auto& obj : objs)
+		root.reset();
+		if (objs.empty())
+			return;
+		root = make_unique<Octree>(min, max);
+		for (Geometry* obj : objs)
 		{
 			Octree::insert(root.get(), obj);
 		}
 	}
 
-
-	void ray_step(Octree* cur_ptr, const ray& r, vector<Octree*>& res)
+	void intersectTree(Octree* node, const ray& r, isect& closest, bool& have_one)
 	{
+		if (!node)
+			return;
+
 		double tmin, tmax;
-		if (cur_ptr && cur_ptr->bound.intersect(r, tmin, tmax))
+		if (!node->bound.intersect(r, tmin, tmax))
+			return;
+		if (have_one && tmin >= closest.t)
+			return;
+
+		for (Geometry* geometry : node->Geometries)
 		{
-			res.push_back(cur_ptr);
-			if (!cur_ptr->isLeaf)
+			isect cur;
+			if (geometry->intersect(r, cur) && (!have_one || cur.t < closest.t))
 			{
-				for (auto i = 0; i < 8; ++i)
-				{
-					ray_step(cur_ptr->child[i].get(), r, res);;
-				}
+				closest = cur;
+				have_one = true;
 			}
 		}
 
+		if (!node->isLeaf)
+		{
+			for (int i = 0; i < 8; ++i)
+				intersectTree(node->child[i].get(), r, closest, have_one);
+		}
 	}
 
 
@@ -335,10 +347,15 @@ bool BoundingBox::intersect(const ray& r, double& tMin, double& tMax) const
 
 		// if the ray is parallel to the face's plane (=0.0)
 		if (vd == 0.0)
+		{
+			if (R0[currentaxis] < min[currentaxis] - RAY_EPSILON ||
+				R0[currentaxis] > max[currentaxis] + RAY_EPSILON)
+				return false;
 			continue;
+		}
 
-		double v1 = min[currentaxis] - R0[currentaxis];
-		double v2 = max[currentaxis] - R0[currentaxis];
+		double v1 = (min[currentaxis] - RAY_EPSILON) - R0[currentaxis];
+		double v2 = (max[currentaxis] + RAY_EPSILON) - R0[currentaxis];
 
 		// two slab intersections
 		double t1 = v1 / vd;
@@ -351,9 +368,9 @@ bool BoundingBox::intersect(const ray& r, double& tMin, double& tMax) const
 		tMin = std::max(t1, tMin);
 		tMax = std::min(t2, tMax);
 
-		if (tMin > tMax) // box is missed
+		if (tMin > tMax + RAY_EPSILON) // box is missed
 			return false;
-		if (tMax < 0.0) // box is behind ray
+		if (tMax < -RAY_EPSILON) // box is behind ray
 			return false;
 	}
 	return true; // it made it past all 3 axes.
@@ -362,10 +379,21 @@ bool BoundingBox::intersect(const ray& r, double& tMin, double& tMax) const
 
 bool Geometry::intersect(const ray& r, isect& i) const
 {
+	if (hasBoundingBoxCapability())
+	{
+		double tmin, tmax;
+		if (!bounds.intersect(r, tmin, tmax))
+			return false;
+	}
+
+	i.setMaterial(nullptr);
+
 	// Transform the ray into the object's local coordinate space
 	vec3f pos = transform->globalToLocalCoords(r.getPosition());
 	vec3f dir = transform->globalToLocalCoords(r.getPosition() + r.getDirection()) - pos;
 	double length = dir.length();
+	if (length < RAY_EPSILON)
+		return false;
 	dir /= length;
 
 	ray localRay(pos, dir);
@@ -405,54 +433,36 @@ bool Geometry::hasBoundingBoxCapability() const
 
 Scene::~Scene()
 {
-	giter g;
-	liter l;
-
+	octTree::root.reset();
 
 	for (Geometry* g : objects) {
 		delete g;
 	}
-	for (Geometry* g : boundedobjects) {
-		delete g;
-	}
-	for (Geometry* g : nonboundedobjects) {
-		delete g;
-	}
+	objects.clear();
+	boundedobjects.clear();
+	nonboundedobjects.clear();
 	for (Light* l : lights) {
 		delete l;
 	}
+	lights.clear();
 }
 
 // Get any intersection with an object.  Return information about the 
 // intersection through the reference parameter.
 bool Scene::intersect(const ray& r, isect& i) const
 {
-
-	isect cur;
 	bool have_one = false;
 
-	if (traceUI->getIsOctTree())
+	if (traceUI->getIsOctTree() && octTree::root)
 	{
-		vector<octTree::Octree*> traverse_tree;
-		octTree::ray_step(octTree::root.get(), r, traverse_tree);
-
-		for (octTree::Octree* node : traverse_tree)
-		{
-			for (Geometry* geometry : node->Geometries)
-			{
-				if (geometry->intersect(r, cur) && (!have_one || cur.t < i.t))
-				{
-					i = cur;
-					have_one = true;
-				}
-			}
-		}
+		octTree::intersectTree(octTree::root.get(), r, i, have_one);
 	}
 	else
 	{
 		for (Geometry* geometry : boundedobjects)
 		{
-			if (geometry->intersect(r, cur) && (!have_one || (cur.t < i.t)))
+			isect cur;
+			if (geometry->intersect(r, cur) && (!have_one || cur.t < i.t))
 			{
 				i = cur;
 				have_one = true;
@@ -463,7 +473,8 @@ bool Scene::intersect(const ray& r, isect& i) const
 	// try the non-bounded objects
 	for (Geometry* geometry : nonboundedobjects)
 	{
-		if (geometry->intersect(r, cur) && (!have_one || (cur.t < i.t)))
+		isect cur;
+		if (geometry->intersect(r, cur) && (!have_one || cur.t < i.t))
 		{
 			i = cur;
 			have_one = true;
@@ -475,6 +486,8 @@ bool Scene::intersect(const ray& r, isect& i) const
 
 void Scene::initScene()
 {
+	boundedobjects.clear();
+	nonboundedobjects.clear();
 	bool first_boundedobject = true;
 
 	// split the objects into two categories: bounded and non-bounded
@@ -502,5 +515,8 @@ void Scene::initScene()
 		}
 	}
 
-	octTree::constrictOctTree(boundedobjects, sceneBounds.min, sceneBounds.max);
+	if (!boundedobjects.empty())
+		octTree::constrictOctTree(boundedobjects, sceneBounds.min, sceneBounds.max);
+	else
+		octTree::root.reset();
 }

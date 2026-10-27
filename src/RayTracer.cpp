@@ -19,35 +19,10 @@
 #include "ui/TraceUI.h"
 extern TraceUI* traceUI;
 
-namespace helperFun
-{
-	double inline getRand(double r)
-	{
-		return (double)rand() / RAND_MAX * 2.0 * r - r;
-	}
-
-	std::vector<vec3f> sampleRay(vec3f rayVec, double r, int num_sample = 20)
-	{
-		std::vector<vec3f> toReturn;
-		vec3f up{ 0, 1, 0 };
-		auto u = rayVec.cross(up).normalize();
-		auto v = u.cross(rayVec).normalize();
-		u = rayVec.cross(v).normalize();
-		for (auto i = 0; i < num_sample; ++i)
-		{
-			toReturn.push_back((rayVec + u * getRand(r) + v * getRand(r)).normalize());
-		}
-		return toReturn;
-	}
-}
-
-
 namespace
 {
 	std::array<double, 2> getInOutRefractionIndex(std::vector<Material>& materials_in, const Material& m)
 	{
-		std::array<double, 2> to_return;
-
 		double inRefractionIndex;
 		double OutRefractionIndex;
 
@@ -139,7 +114,7 @@ vec3f RayTracer::trace(Scene* scene, double x, double y)
 // (or places called from here) to handle reflection, refraction, etc etc.
 vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 	const vec3f& thresh, int depth,
-	std::vector<Material> materials_in)
+	const std::vector<Material>& materials_in)
 {
 	isect i;
 
@@ -193,43 +168,39 @@ vec3f RayTracer::traceRay(Scene* scene, const ray& r,
 			}
 		}
 
-		const auto rVec = (V - 2 * Normal.dot(V) * Normal).normalize();
-		ray reflectedRay{ Pos, rVec };
-		auto reflectColor = traceRay(scene, reflectedRay, thresh
-			, depth + 1, materials_in);
-		auto glossyR = traceUI->m_glossyReflection->value();
-		if (glossyR && depth < max_depth)
+		vec3f reflectColor(0.0, 0.0, 0.0);
+		if (depth < max_depth && !m.kr.iszero())
 		{
-			auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 20);
-			Concurrency::parallel_for_each(sampleVecs.begin(), sampleVecs.end(),
-				[&](const vec3f& sampleVec)
+			const auto rVec = (V - 2 * Normal.dot(V) * Normal).normalize();
+			ray reflectedRay{ Pos + rVec * RAY_EPSILON, rVec };
+			reflectColor = traceRay(scene, reflectedRay, thresh, depth + 1, materials_in);
+			if (traceUI->m_glossyReflection->value())
+			{
+				auto sampleVecs = helperFun::sampleRay(rVec, 0.01, 20);
+				for (const auto& sampleVec : sampleVecs)
 				{
-					// ray reflectedRay{Pos, sampleVec};
-					reflectColor += traceRay(scene, ray{ Pos, sampleVec }, thresh,
-					std::max(max_depth - 1, depth + 1),
-					materials_in);
+					ray glossyRay{ Pos + sampleVec * RAY_EPSILON, sampleVec };
+					reflectColor += traceRay(scene, glossyRay, thresh,
+						std::max(max_depth - 1, depth + 1), materials_in);
 				}
-			);
-			reflectColor /= 21;
+				reflectColor /= 21;
+			}
+			reflectColor = prod(reflectColor, m.kr);
 		}
-		reflectColor = prod(reflectColor, m.kr);
 
-		vec3f refractRay{ 0.0, 0.0, 0.0 };
-
-		vec3f refractColor;
-		if (m.kt.length())
+		vec3f refractColor(0.0, 0.0, 0.0);
+		if (depth < max_depth && !m.kt.iszero())
 		{
-			const auto InOut = getInOutRefractionIndex(materials_in, m);
-			const auto& In = InOut[0];
-			const auto& Out = InOut[1];
-
-			const auto refractionVec
-				= calRefractionVec(V, Normal, In, Out);
-			ray refractionRay{ Pos, refractionVec };
-			refractColor = traceRay(scene, refractionRay, thresh
-				, depth + 1, materials_in);
+			std::vector<Material> stack = materials_in;
+			const auto InOut = getInOutRefractionIndex(stack, m);
+			const auto refractionVec = calRefractionVec(V, Normal, InOut[0], InOut[1]);
+			if (!refractionVec.iszero())
+			{
+				ray refractionRay{ Pos + refractionVec * RAY_EPSILON, refractionVec };
+				refractColor = traceRay(scene, refractionRay, thresh, depth + 1, stack);
+			}
+			refractColor = prod(refractColor, m.kt);
 		}
-		refractColor = prod(refractColor, m.kt);
 
 		return phong + reflectColor + refractColor;
 	}
@@ -280,6 +251,10 @@ bool RayTracer::sceneLoaded()
 
 bool RayTracer::loadScene(char* fn)
 {
+	delete scene;
+	scene = nullptr;
+	m_bSceneLoaded = false;
+
 	try
 	{
 		scene = readScene(fn);
@@ -297,6 +272,7 @@ bool RayTracer::loadScene(char* fn)
 	buffer_height = (int)(buffer_width / scene->getCamera()->getAspectRatio() + 0.5);
 
 	bufferSize = buffer_width * buffer_height * 3;
+	delete[] buffer;
 	buffer = new unsigned char[bufferSize];
 
 	// separate objects into bounded and unbounded
